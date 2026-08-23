@@ -1,0 +1,31 @@
+"use client";
+
+import { MapPin, Car, KeyRound, Smartphone } from "lucide-react";
+
+const items = [
+  { icon: MapPin, label: "South B, Nairobi", sub: "Safe, quiet neighbourhood" },
+  { icon: Car, label: "10 min to JKIA", sub: "Straight down Mombasa Rd" },
+  { icon: KeyRound, label: "Self check-in", sub: "Arrive on your own schedule" },
+  { icon: Smartphone, label: "M-Pesa accepted", sub: "Fast, secure deposit" },
+];
+
+export default function TrustStrip() {
+  return (
+    <section style={{ backgroundColor: "#0B1526", borderTop: "1px solid rgba(184,147,90,0.12)", borderBottom: "1px solid rgba(184,147,90,0.12)" }}>
+      <div className="max-w-6xl mx-auto px-5 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4">
+        {items.map((item, i) => {
+          const Icon = item.icon;
+          return (
+            <div key={i} className="flex items-center gap-3">
+              <Icon size={18} style={{ color: "#D4B483", flexShrink: 0 }} />
+              <div>
+                <p className="text-white text-sm font-medium leading-tight">{item.label}</p>
+                <p className="text-white/40 text-xs mt-0.5">{item.sub}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
