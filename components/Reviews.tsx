@@ -25,7 +25,7 @@ export default function Reviews() {
           <p className="text-white/40 text-sm italic">Your review could be the first one here.</p>
         </div>
 
-        
+        <a
           href={waLink("Hi, I just stayed at Serenity Suites Nairobi and wanted to leave a review.")}
           target="_blank"
           rel="noopener noreferrer"
