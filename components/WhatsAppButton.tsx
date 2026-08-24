@@ -4,7 +4,7 @@ import { waLink } from "@/lib/siteConfig";
 
 export default function WhatsAppButton() {
   return (
-    
+    <a
       href={waLink("Hi! I'm interested in booking Serenity Suites Nairobi. Can you help me?")}
       target="_blank"
       rel="noopener noreferrer"
