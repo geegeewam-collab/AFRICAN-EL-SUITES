@@ -40,7 +40,7 @@ export default function EnhanceStay() {
                 <p className="text-white/45 text-sm leading-relaxed mb-5 flex-1">{extra.desc}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-serif" style={{ color: "#D4B483" }}>{extra.price}</span>
-                  
+                  <a
                     href={waLink(`Hi, I'd like to add "${extra.title}" (${extra.price}) to my stay at Serenity Suites Nairobi.`)}
                     target="_blank"
                     rel="noopener noreferrer"
