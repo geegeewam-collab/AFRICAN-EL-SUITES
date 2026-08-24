@@ -15,7 +15,7 @@ export default function Footer() {
             ten minutes from JKIA.
           </p>
           {INSTAGRAM_HANDLE && (
-            
+            <a
               href={`https://instagram.com/${INSTAGRAM_HANDLE}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -60,7 +60,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3">
               <Phone size={15} style={{ color: "#D4B483", flexShrink: 0 }} />
-              
+              <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
