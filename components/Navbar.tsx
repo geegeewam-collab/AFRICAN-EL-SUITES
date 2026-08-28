@@ -40,7 +40,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            
+            <a
               key={link.label}
               href={link.href}
               className="text-sm text-white/70 hover:text-white transition-colors duration-200 tracking-wide"
@@ -48,7 +48,7 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          
+          <a
             href="#book"
             className="px-5 py-2.5 text-sm font-medium rounded-sm transition-all duration-200 hover:opacity-90"
             style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
@@ -70,7 +70,7 @@ export default function Navbar() {
         <div className="md:hidden border-t border-white/10 mt-4" style={{ backgroundColor: "rgba(11,21,38,0.98)" }}>
           <div className="flex flex-col px-5 py-4 gap-4">
             {navLinks.map((link) => (
-              
+              <a
                 key={link.label}
                 href={link.href}
                 className="text-white/80 text-base py-1"
@@ -79,7 +79,7 @@ export default function Navbar() {
                 {link.label}
               </a>
             ))}
-            
+            <a
               href="#book"
               className="text-center px-5 py-3 text-sm font-medium rounded-sm mt-2"
               style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
