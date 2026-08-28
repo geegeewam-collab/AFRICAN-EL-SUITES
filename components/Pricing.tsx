@@ -58,7 +58,7 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              
+              <a
                 href={waLink(`Hi, I'd like to book Serenity Suites Nairobi at the ${plan.name.toLowerCase()} rate (KES ${plan.rate.toLocaleString()}/night).`)}
                 target="_blank"
                 rel="noopener noreferrer"
