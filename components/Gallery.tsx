@@ -5,6 +5,11 @@ import Image from "next/image";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Camera } from "lucide-react";
+import { HostProfile } from "@/lib/types";
+
+interface GalleryProps {
+  host: HostProfile;
+}
 
 const images = [
   { src: "/images/living-room-tv.jpg", alt: "Living room and TV lounge with cobalt curtains", label: "Living Room" },
@@ -17,7 +22,7 @@ const images = [
   { src: "/images/styling-detail.jpg", alt: "Styling detail, fresh greenery", label: "Details" },
 ];
 
-export default function Gallery() {
+export default function Gallery({ host }: GalleryProps) {
   const [index, setIndex] = useState(-1);
   const slides = images.map((img) => ({ src: img.src, alt: img.alt }));
 
