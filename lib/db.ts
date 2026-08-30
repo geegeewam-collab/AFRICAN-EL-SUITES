@@ -36,7 +36,8 @@ export async function getHostBySlug(slug: string): Promise<HostProfile | null> {
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      return null;
+      console.warn(`No host found in Firestore for slug "${slug}". Using fallback host if applicable.`);
+      return slug === FALLBACK_HOST.slug ? FALLBACK_HOST : null;
     }
 
     const docData = querySnapshot.docs[0].data();
