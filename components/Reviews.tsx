@@ -135,7 +135,7 @@ export default function Reviews() {
                         value={formData.name}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
                       />
-                    </div}
+                    </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-white/40 text-[10px] uppercase tracking-widest">Role/Title</label>
                       <input
@@ -144,8 +144,8 @@ export default function Reviews() {
                         value={formData.role}
                         onChange={(e) => setFormData({...formData, role: e.target.value})}
                       />
-                    </div}
-                  </div}
+                    </div>
+                  </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-white/40 text-[10px] uppercase tracking-widest">Your Experience</label>
@@ -156,7 +156,7 @@ export default function Reviews() {
                       value={formData.text}
                       onChange={(e) => setFormData({...formData, text: e.target.value})}
                     />
-                  </div}
+                  </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-white/40 text-[10px] uppercase tracking-widest text-center block mb-2">Rating</label>
@@ -175,8 +175,8 @@ export default function Reviews() {
                           />
                         </button>
                       ))}
-                    </div}
-                  </div}
+                    </div>
+                  </div>
 
                   <button
                     type="submit"
