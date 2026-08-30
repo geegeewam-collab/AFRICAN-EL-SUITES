@@ -7,12 +7,12 @@ export default function Reviews() {
   return (
     <section id="reviews" className="section-pad" style={{ backgroundColor: "#0B1526" }}>
       <div className="max-w-3xl mx-auto text-center">
-        <span className="eyebrow">Guest Reviews</span>
-        <h2 className="mt-3 text-3xl md:text-4xl font-serif text-white mb-5">Newly listed</h2>
+        <span className="eyebrow">Guest Experiences</span>
+        <h2 className="mt-3 text-3xl md:text-4xl font-serif text-white mb-5">A Hidden Gem, Newly Unveiled</h2>
         <p className="text-white/50 text-sm leading-relaxed max-w-md mx-auto mb-10">
-          Serenity Suites just opened for direct bookings, so there's no
-          review wall to show off yet — that part's honest. Stay with us
-          and be the first name here.
+          Serenity Suites has just opened its doors for direct bookings.
+          We are currently welcoming our first circle of guests to experience
+          this sanctuary — be among the few to define our legacy.
         </p>
 
         <div className="rounded-sm p-8 mx-auto max-w-md border" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(184,147,90,0.18)" }}>
@@ -22,17 +22,17 @@ export default function Reviews() {
               <Star key={j} size={14} style={{ color: "rgba(212,180,131,0.3)" }} />
             ))}
           </div>
-          <p className="text-white/40 text-sm italic">Your review could be the first one here.</p>
+          <p className="text-white/40 text-sm italic">The first guest experience awaits. Will it be yours?</p>
         </div>
 
         <a
-          href={waLink("Hi, I just stayed at Serenity Suites Nairobi and wanted to leave a review.")}
+          href={waLink("Hi, I just stayed at Serenity Suites Nairobi and would love to share my experience as one of your first guests.")}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block mt-8 px-6 py-3 text-sm rounded-sm border transition-all duration-200 hover:bg-white/5"
           style={{ borderColor: "rgba(184,147,90,0.35)", color: "#D4B483" }}
         >
-          Leave a Review
+          Share Your Experience
         </a>
       </div>
     </section>

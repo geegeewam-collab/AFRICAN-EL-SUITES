@@ -2,22 +2,31 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone } from "lucide-react";
+import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone, Users } from "lucide-react";
 import { waLink } from "@/lib/siteConfig";
 
 const steps = [
-  { n: "01", icon: CalendarCheck, title: "Choose your dates", desc: "Pick check-in and check-out above — we confirm availability directly." },
-  { n: "02", icon: ClipboardCheck, title: "Review & confirm", desc: "We send the total, house rules, and access details on WhatsApp." },
-  { n: "03", icon: Smartphone, title: "Pay your deposit", desc: "50% via M-Pesa secures the booking. Balance on arrival." },
+  { n: "01", icon: CalendarCheck, title: "Request your dates", desc: "Enter your preferred stay dates — we confirm availability instantly." },
+  { n: "02", icon: ClipboardCheck, title: "Curated Confirmation", desc: "We send the final quote and access details via WhatsApp." },
+  { n: "03", icon: Smartphone, title: "Secure your sanctuary", desc: "A 50% M-Pesa deposit secures your booking. Balance on arrival." },
 ];
 
 export default function SpaceBooking() {
   const [sending, setSending] = useState(false);
+  const [dates, setDates] = useState({ checkin: "", checkout: "" });
+  const [guests, setGuests] = useState("1");
 
   const startBooking = () => {
     setSending(true);
+    const message = `Hi! I'd like to request a booking at Serenity Suites Nairobi.
+
+📅 Dates: ${dates.checkin || "TBD"} to ${dates.checkout || "TBD"}
+👥 Guests: ${guests}
+
+Please let me know if these dates are available!`;
+
     window.open(
-      waLink("Hi, I'd like to start a direct booking at Serenity Suites Nairobi. Please send me the availability calendar."),
+      waLink(message),
       "_blank",
       "noopener,noreferrer"
     );
@@ -27,20 +36,20 @@ export default function SpaceBooking() {
   return (
     <section id="book" className="section-pad" style={{ backgroundColor: "#F6F1E6" }}>
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-16 items-start">
-        <div>
+        <div className="animate-in fade-in slide-in-from-left duration-1000">
           <span className="eyebrow" style={{ color: "#8F7143" }}>The Space</span>
           <h2 className="mt-3 text-3xl md:text-4xl font-serif mb-5 leading-tight" style={{ color: "#0B1526" }}>
-            Thoughtfully kept,
+            A sanctuary of
             <br />
-            quietly styled.
+            stillness and style.
           </h2>
           <p className="max-w-md leading-relaxed mb-6" style={{ color: "#5B564B" }}>
-            One bedroom, dressed in the same cobalt and warm-wood palette
-            throughout — a fitted kitchenette, a proper bed, and enough
-            stillness to actually unwind in.
+            A refined one-bedroom retreat designed for the discerning traveler.
+            Featuring a signature cobalt and warm-wood palette, a fully-equipped
+            kitchenette, and an atmosphere of absolute calm.
           </p>
           <a href="#gallery" className="inline-flex items-center gap-2 text-sm font-medium tracking-wide" style={{ color: "#8F7143" }}>
-            EXPLORE PHOTOS <ArrowRight size={15} />
+            EXPLORE THE AESTHETIC <ArrowRight size={15} />
           </a>
 
           <div className="grid grid-cols-2 gap-2.5 mt-8">
@@ -61,12 +70,12 @@ export default function SpaceBooking() {
           </div>
         </div>
 
-        <div className="rounded-sm p-7 md:p-9" style={{ backgroundColor: "#0B1526", border: "1px solid rgba(184,147,90,0.2)" }}>
-          <span className="eyebrow">Book Direct</span>
+        <div className="rounded-sm p-7 md:p-9 shadow-xl" style={{ backgroundColor: "#0B1526", border: "1px solid rgba(184,147,90,0.2)" }}>
+          <span className="eyebrow">Direct Booking</span>
           <h3 className="mt-3 text-2xl md:text-3xl font-serif text-white mb-7 leading-tight">
-            Simple. Secure.
+            Seamless. Secure.
             <br />
-            Seamless.
+            Exclusively Yours.
           </h3>
 
           <div className="flex flex-col gap-6 mb-8">
@@ -89,15 +98,49 @@ export default function SpaceBooking() {
             })}
           </div>
 
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-in</label>
+              <input
+                type="date"
+                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
+                onChange={(e) => setDates({...dates, checkin: e.target.value})}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-out</label>
+              <input
+                type="date"
+                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
+                onChange={(e) => setDates({...dates, checkout: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 mb-8">
+            <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Number of Guests</label>
+            <div className="flex gap-2">
+              {[ "1", "2" ].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setGuests(num)}
+                  className={`flex-1 py-2 text-sm rounded-sm transition-all ${guests === num ? 'bg-[#B8935A] text-[#0B1526]' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                >
+                  {num} Guest{num !== "1" ? 's' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={startBooking}
-            className="w-full py-3.5 text-sm font-medium rounded-sm transition-all duration-200 hover:opacity-90"
+            className="w-full py-4 text-sm font-medium rounded-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
             style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
           >
-            {sending ? "Opening WhatsApp…" : "Start Booking"}
+            {sending ? "Opening WhatsApp…" : "Request Booking"}
           </button>
           <p className="text-white/30 text-xs text-center mt-4">
-            Rates from KES 3,500/night · M-Pesa deposit secures your stay
+            Starting from KES 3,500/night · M-Pesa secures your stay
           </p>
         </div>
       </div>

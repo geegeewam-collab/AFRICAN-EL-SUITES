@@ -17,7 +17,12 @@ export default function Hero() {
         : checkIn
         ? `checking in ${checkIn}`
         : "dates I'll confirm";
-    const message = `Hi, I'd like to check availability at Serenity Suites Nairobi for ${dates}, ${guests} guest(s).`;
+    const message = `Hi! I'm interested in a stay at Serenity Suites Nairobi.
+
+📅 Request: ${dates}
+👥 Guests: ${guests}
+
+Could you please check availability for these dates?`;
     window.open(waLink(message), "_blank", "noopener,noreferrer");
   };
 
@@ -52,11 +57,12 @@ export default function Hero() {
         <div className="max-w-xl">
           <span className="eyebrow">South B · Nairobi · Kenya</span>
           <h1 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-serif text-white leading-[1.08] mb-5">
-            Your quiet address in South B.
+            A private sanctuary<br />
+            of absolute stillness.
           </h1>
           <p className="text-white/75 text-base md:text-lg leading-relaxed mb-2 max-w-md">
-            A fully furnished suite ten minutes from JKIA — styled for real rest,
-            whether you're between flights or between meetings.
+            A curated retreat ten minutes from JKIA — meticulously styled for
+            the discerning traveler who seeks refuge in a fast-paced city.
           </p>
         </div>
 
@@ -112,7 +118,7 @@ export default function Hero() {
           </button>
         </div>
         <p className="mt-3 flex items-center gap-1.5 text-white/45 text-xs">
-          <ShieldCheck size={13} /> No booking fees · Best rate when you book direct
+          <ShieldCheck size={13} /> Guaranteed best rate when you book direct
         </p>
       </div>
     </section>

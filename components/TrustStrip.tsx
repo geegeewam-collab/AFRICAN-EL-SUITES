@@ -1,12 +1,12 @@
 "use client";
 
-import { MapPin, Car, KeyRound, Smartphone } from "lucide-react";
+import { MapPin, Car, KeyRound, ShieldCheck } from "lucide-react";
 
 const items = [
-  { icon: MapPin, label: "South B, Nairobi", sub: "Safe, quiet neighbourhood" },
-  { icon: Car, label: "10 min to JKIA", sub: "Straight down Mombasa Rd" },
-  { icon: KeyRound, label: "Self check-in", sub: "Arrive on your own schedule" },
-  { icon: Smartphone, label: "M-Pesa accepted", sub: "Fast, secure deposit" },
+  { icon: MapPin, label: "South B, Nairobi", sub: "A safe, quiet sanctuary" },
+  { icon: Car, label: "10 min to JKIA", sub: "Effortless airport access" },
+  { icon: KeyRound, label: "Private Arrival", sub: "Seamless, self-managed check-in" },
+  { icon: ShieldCheck, label: "Secure Direct Pay", sub: "Verified M-Pesa transactions" },
 ];
 
 export default function TrustStrip() {
