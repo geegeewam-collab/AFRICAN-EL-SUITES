@@ -3,12 +3,19 @@
 import { useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Users, ShieldCheck } from "lucide-react";
-import { waLink } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
 
-export default function Hero() {
+interface HeroProps {
+  host: HostProfile;
+}
+
+export default function Hero({ host }: HeroProps) {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
+
+  const waLink = (message: string) =>
+    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
 
   const handleCheck = () => {
     const dates =
@@ -17,7 +24,7 @@ export default function Hero() {
         : checkIn
         ? `checking in ${checkIn}`
         : "dates I'll confirm";
-    const message = `Hi! I'm interested in a stay at Serenity Suites Nairobi.
+    const message = `Hi! I'm interested in a stay at ${host.name}.
 
 📅 Request: ${dates}
 👥 Guests: ${guests}
@@ -31,7 +38,7 @@ Could you please check availability for these dates?`;
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/living-room-tv.jpg"
-          alt="Living room at Serenity Suites Nairobi with cobalt curtains and TV lounge"
+          alt={`Living room at ${host.name}`}
           fill
           priority
           className="object-cover object-[center_30%]"
@@ -55,14 +62,12 @@ Could you please check availability for these dates?`;
 
       <div className="relative z-10 w-full max-w-6xl mx-auto px-5 animate-fade-up">
         <div className="max-w-xl">
-          <span className="eyebrow">South B · Nairobi · Kenya</span>
+          <span className="eyebrow">{host.address.area} · {host.address.line1}</span>
           <h1 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-serif text-white leading-[1.08] mb-5">
-            A private sanctuary<br />
-            of absolute stillness.
+            {host.heroTitle}
           </h1>
           <p className="text-white/75 text-base md:text-lg leading-relaxed mb-2 max-w-md">
-            A curated retreat ten minutes from JKIA — meticulously styled for
-            the discerning traveler who seeks refuge in a fast-paced city.
+            {host.heroSubtext}
           </p>
         </div>
 

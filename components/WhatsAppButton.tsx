@@ -1,11 +1,18 @@
 "use client";
 
-import { waLink } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
 
-export default function WhatsAppButton() {
+interface WhatsAppButtonProps {
+  host: HostProfile;
+}
+
+export default function WhatsAppButton({ host }: WhatsAppButtonProps) {
+  const waLink = (message: string) =>
+    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
   return (
     <a
-      href={waLink("Hi! I'm interested in booking Serenity Suites Nairobi. Can you help me?")}
+      href={waLink(`Hi! I'm interested in booking ${host.name}. Can you help me?`)}
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-6 right-5 z-50 flex items-center gap-3 group"

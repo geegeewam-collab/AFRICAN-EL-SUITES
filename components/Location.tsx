@@ -1,7 +1,11 @@
 "use client";
 
 import { MapPin, Plane, Building2, ShoppingBag, Coffee } from "lucide-react";
-import { ADDRESS } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
+
+interface LocationProps {
+  host: HostProfile;
+}
 
 const distances = [
   { icon: Plane, label: "JKIA Airport", distance: "10 mins", detail: "Via Mombasa Road" },
@@ -10,7 +14,7 @@ const distances = [
   { icon: Coffee, label: "Bellevue Area", distance: "Walking", detail: "Shops & restaurants" },
 ];
 
-export default function Location() {
+export default function Location({ host }: LocationProps) {
   return (
     <section id="location" className="section-pad" style={{ backgroundColor: "#0B1526" }}>
       <div className="max-w-6xl mx-auto">
@@ -18,25 +22,19 @@ export default function Location() {
           <span className="eyebrow">Location</span>
           <h2 className="mt-3 text-3xl md:text-4xl font-serif text-white mb-4">Prime location</h2>
           <p className="text-white/45 text-sm max-w-md mx-auto">
-            {ADDRESS.line1}, {ADDRESS.area}
+            {host.address.line1}, {host.address.area}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-10 items-start">
           <div className="rounded-sm overflow-hidden border relative" style={{ borderColor: "rgba(184,147,90,0.18)", height: "380px" }}>
-            {/*
-              REPLACE the iframe src with the real Google Maps embed:
-              1. Go to maps.google.com and search the building
-              2. Share → Embed a map → copy the src URL
-              3. Paste it below
-            */}
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.8189263636!2d36.82081!3d-1.31920!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f11a81dacbf35%3A0x4f8e6e4e4e4e4e4e!2sSouth%20B%2C%20Nairobi!5e0!3m2!1sen!2ske!4v1700000000000!5m2!1sen!2ske"
               style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="Serenity Suites Nairobi Location"
+              title={`${host.name} Location`}
             />
           </div>
 
@@ -44,8 +42,8 @@ export default function Location() {
             <div className="flex items-start gap-3 p-4 rounded-sm border" style={{ background: "rgba(184,147,90,0.06)", borderColor: "rgba(184,147,90,0.18)" }}>
               <MapPin size={18} style={{ color: "#D4B483", flexShrink: 0, marginTop: 2 }} />
               <div>
-                <p className="text-white font-medium text-sm">{ADDRESS.line1}</p>
-                <p className="text-white/50 text-xs mt-0.5">{ADDRESS.line2} · {ADDRESS.area}</p>
+                <p className="text-white font-medium text-sm">{host.address.line1}</p>
+                <p className="text-white/50 text-xs mt-0.5">{host.address.line2} · {host.address.area}</p>
               </div>
             </div>
 

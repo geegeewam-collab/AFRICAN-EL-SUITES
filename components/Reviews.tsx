@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Star, Quote, Send } from "lucide-react";
+import { HostProfile } from "@/lib/types";
 
 const INITIAL_REVIEWS = [
   {
@@ -27,7 +28,11 @@ const INITIAL_REVIEWS = [
   },
 ];
 
-export default function Reviews() {
+interface ReviewsProps {
+  host: HostProfile;
+}
+
+export default function Reviews({ host }: ReviewsProps) {
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -54,7 +59,7 @@ export default function Reviews() {
           <span className="eyebrow">The Guest Circle</span>
           <h2 className="mt-3 text-3xl md:text-5xl font-serif text-white mb-5">Shared Experiences</h2>
           <p className="text-white/50 text-sm leading-relaxed max-w-md mx-auto">
-            A collection of moments from those who have found stillness at Serenity Suites.
+            A collection of moments from those who have found stillness at {host.name}.
           </p>
         </div>
 

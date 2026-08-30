@@ -1,7 +1,11 @@
 "use client";
 
 import { Car, Coffee, Clock3, ArrowRight } from "lucide-react";
-import { waLink } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
+
+interface EnhanceStayProps {
+  host: HostProfile;
+}
 
 const extras = [
   { icon: Car, title: "Airport Pickup", desc: "Stress-free ride from JKIA straight to the suite.", price: "KES 2,000" },
@@ -9,7 +13,10 @@ const extras = [
   { icon: Clock3, title: "Late Checkout", desc: "Keep the suite until 2pm, subject to availability.", price: "KES 1,500" },
 ];
 
-export default function EnhanceStay() {
+export default function EnhanceStay({ host }: EnhanceStayProps) {
+  const waLink = (message: string) =>
+    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
   return (
     <section className="section-pad" style={{ backgroundColor: "#0B1526" }}>
       <div className="max-w-6xl mx-auto">
@@ -41,7 +48,7 @@ export default function EnhanceStay() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-serif" style={{ color: "#D4B483" }}>{extra.price}</span>
                   <a
-                    href={waLink(`Hi, I'd like to add "${extra.title}" (${extra.price}) to my stay at Serenity Suites Nairobi.`)}
+                    href={waLink(`Hi, I'd like to add "${extra.title}" (${extra.price}) to my stay at ${host.name}.`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-xs font-medium text-white/60 hover:text-white transition-colors"

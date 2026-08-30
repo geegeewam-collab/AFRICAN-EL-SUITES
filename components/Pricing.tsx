@@ -1,24 +1,31 @@
 "use client";
 
 import { Check, MessageCircle } from "lucide-react";
-import { NIGHTLY_RATE, waLink } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
 
-const plans = [
-  {
-    name: "Weekday",
-    sub: "Sunday – Thursday",
-    rate: NIGHTLY_RATE.weekday,
-    features: ["Fully furnished 1BR suite", "High-speed WiFi & Smart TV", "Secure parking", "Self check-in"],
-  },
-  {
-    name: "Weekend",
-    sub: "Friday – Saturday",
-    rate: NIGHTLY_RATE.weekend,
-    features: ["Fully furnished 1BR suite", "High-speed WiFi & Smart TV", "Secure parking", "Self check-in"],
-  },
-];
+interface PricingProps {
+  host: HostProfile;
+}
 
-export default function Pricing() {
+export default function Pricing({ host }: PricingProps) {
+  const plans = [
+    {
+      name: "Weekday",
+      sub: "Sunday – Thursday",
+      rate: host.nightlyRate.weekday,
+      features: ["Fully furnished 1BR suite", "High-speed WiFi & Smart TV", "Secure parking", "Self check-in"],
+    },
+    {
+      name: "Weekend",
+      sub: "Friday – Saturday",
+      rate: host.nightlyRate.weekend,
+      features: ["Fully furnished 1BR suite", "High-speed WiFi & Smart TV", "Secure parking", "Self check-in"],
+    },
+  ];
+
+  const waLink = (message: string) =>
+    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
   return (
     <section id="pricing" className="section-pad" style={{ backgroundColor: "#F6F1E6" }}>
       <div className="max-w-6xl mx-auto">
@@ -59,7 +66,7 @@ export default function Pricing() {
               </ul>
 
               <a
-                href={waLink(`Hi, I'd like to book Serenity Suites Nairobi at the ${plan.name.toLowerCase()} rate (KES ${plan.rate.toLocaleString()}/night).`)}
+                href={waLink(`Hi, I'd like to book ${host.name} at the ${plan.name.toLowerCase()} rate (KES ${plan.rate.toLocaleString()}/night).`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-3 text-sm font-medium rounded-sm transition-all duration-200 hover:opacity-90"

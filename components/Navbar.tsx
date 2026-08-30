@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { HostProfile } from "@/lib/types";
+
+interface NavbarProps {
+  host: HostProfile;
+}
 
 const navLinks = [
   { label: "The Suite", href: "#gallery" },
@@ -11,7 +16,7 @@ const navLinks = [
   { label: "Reviews", href: "#reviews" },
 ];
 
-export default function Navbar() {
+export default function Navbar({ host }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,9 +37,9 @@ export default function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-5 flex items-center justify-between">
         <a href="#" className="flex flex-col leading-none">
-          <span className="text-xl font-serif text-white tracking-wide">Serenity Suites</span>
+          <span className="text-xl font-serif text-white tracking-wide">{host.name}</span>
           <span className="text-[0.65rem] tracking-[0.28em] uppercase" style={{ color: "#D4B483" }}>
-            Nairobi
+            {host.address.area}
           </span>
         </a>
 

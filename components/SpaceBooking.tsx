@@ -2,35 +2,74 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone, Users } from "lucide-react";
-import { waLink } from "@/lib/siteConfig";
+import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone, Users, CreditCard } from "lucide-react";
+import { HostProfile } from "@/lib/types";
+
+interface SpaceBookingProps {
+  host: HostProfile;
+}
 
 const steps = [
   { n: "01", icon: CalendarCheck, title: "Request your dates", desc: "Enter your preferred stay dates — we confirm availability instantly." },
-  { n: "02", icon: ClipboardCheck, title: "Curated Confirmation", desc: "We send the final quote and access details via WhatsApp." },
-  { n: "03", icon: Smartphone, title: "Secure your sanctuary", desc: "A 50% M-Pesa deposit secures your booking. Balance on arrival." },
+  { n: "02", icon: ClipboardCheck, title: "Secure Deposit", desc: "Pay a 50% deposit via STK Push to lock in your dates." },
+  { n: "03", icon: Smartphone, title: "Final Confirmation", desc: "Receive house rules and access details via WhatsApp." },
 ];
 
-export default function SpaceBooking() {
+export default function SpaceBooking({ host }: SpaceBookingProps) {
   const [sending, setSending] = useState(false);
   const [dates, setDates] = useState({ checkin: "", checkout: "" });
   const [guests, setGuests] = useState("1");
+  const [guestInfo, setGuestInfo] = useState({ name: "", phone: "" });
 
-  const startBooking = () => {
+  const waLink = (message: string) =>
+    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+  const startBooking = async () => {
+    if (!guestInfo.name || !guestInfo.phone) {
+      alert("Please enter your name and phone number to continue.");
+      return;
+    }
+
     setSending(true);
-    const message = `Hi! I'd like to request a booking at Serenity Suites Nairobi.
 
+    try {
+      // 1. Call the Payment API to trigger STK Push
+      const response = await fetch("/api/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hostId: host.id,
+          guestName: guestInfo.name,
+          guestPhone: guestInfo.phone,
+          checkIn: dates.checkin,
+          checkOut: dates.checkout,
+          guests: guests,
+          totalAmount: host.nightlyRate.weekday, // Simplified for now
+          depositAmount: host.nightlyRate.weekday / 2,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 2. If payment is triggered, send them to WhatsApp for the confirmation
+        const message = `Hi! I've just triggered the deposit for my stay at ${host.name}.
+
+👤 Name: ${guestInfo.name}
 📅 Dates: ${dates.checkin || "TBD"} to ${dates.checkout || "TBD"}
 👥 Guests: ${guests}
 
-Please let me know if these dates are available!`;
+Please confirm receipt of payment and send me the house rules!`;
 
-    window.open(
-      waLink(message),
-      "_blank",
-      "noopener,noreferrer"
-    );
-    setTimeout(() => setSending(false), 600);
+        window.open(waLink(message), "_blank", "noopener,noreferrer");
+      } else {
+        alert(`Payment Error: ${result.error}`);
+      }
+    } catch (error) {
+      alert("An error occurred while processing your booking. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -44,9 +83,7 @@ Please let me know if these dates are available!`;
             stillness and style.
           </h2>
           <p className="max-w-md leading-relaxed mb-6" style={{ color: "#5B564B" }}>
-            A refined one-bedroom retreat designed for the discerning traveler.
-            Featuring a signature cobalt and warm-wood palette, a fully-equipped
-            kitchenette, and an atmosphere of absolute calm.
+            {host.description}
           </p>
           <a href="#gallery" className="inline-flex items-center gap-2 text-sm font-medium tracking-wide" style={{ color: "#8F7143" }}>
             EXPLORE THE AESTHETIC <ArrowRight size={15} />
@@ -98,49 +135,84 @@ Please let me know if these dates are available!`;
             })}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-in</label>
-              <input
-                type="date"
-                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
-                onChange={(e) => setDates({...dates, checkin: e.target.value})}
-              />
+          <div className="space-y-6 mb-8">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-in</label>
+                <input
+                  type="date"
+                  className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
+                  onChange={(e) => setDates({...dates, checkin: e.target.value})}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-out</label>
+                <input
+                  type="date"
+                  className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
+                  onChange={(e) => setDates({...dates, checkout: e.target.value})}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-out</label>
-              <input
-                type="date"
-                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
-                onChange={(e) => setDates({...dates, checkout: e.target.value})}
-              />
-            </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5 mb-8">
-            <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Number of Guests</label>
-            <div className="flex gap-2">
-              {[ "1", "2" ].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setGuests(num)}
-                  className={`flex-1 py-2 text-sm rounded-sm transition-all ${guests === num ? 'bg-[#B8935A] text-[#0B1526]' : 'bg-white/5 text-white hover:bg-white/10'}`}
-                >
-                  {num} Guest{num !== "1" ? 's' : ''}
-                </button>
-              ))}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Guest Details</label>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  placeholder="Full Name"
+                  className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A]"
+                  value={guestInfo.name}
+                  onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
+                />
+                <input
+                  placeholder="Phone (e.g. 254...)"
+                  className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A]"
+                  value={guestInfo.phone}
+                  onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Number of Guests</label>
+              <div className="flex gap-2">
+                {[ "1", "2" ].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setGuests(num)}
+                    className={`flex-1 py-2 text-sm rounded-sm transition-all ${guests === num ? 'bg-[#B8935A] text-[#0B1526]' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                  >
+                    {num} Guest{num !== "1" ? 's' : ''}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <button
             onClick={startBooking}
-            className="w-full py-4 text-sm font-medium rounded-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-            style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
+            disabled={sending}
+            className="w-full py-4 text-sm font-medium rounded-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+            style={{
+              background: "linear-gradient(135deg, #B8935A, #D4B483)",
+              color: "#0B1526",
+              opacity: sending ? 0.7 : 1
+            }}
           >
-            {sending ? "Opening WhatsApp…" : "Request Booking"}
+            {sending ? (
+              <>
+                <div className="w-4 h-4 border-2 border-[#0B1526]/30 border-t-[#0B1526] rounded-full animate-spin" />
+                Processing Deposit...
+              </>
+            ) : (
+              <>
+                <CreditCard size={16} />
+                Confirm & Pay Deposit
+              </>
+            )}
           </button>
           <p className="text-white/30 text-xs text-center mt-4">
-            Starting from KES 3,500/night · M-Pesa secures your stay
+            Deposit of KES {(host.nightlyRate.weekday / 2).toLocaleString()} secures your stay
           </p>
         </div>
       </div>

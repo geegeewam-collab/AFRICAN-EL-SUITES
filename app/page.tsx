@@ -10,22 +10,32 @@ import Location from "@/components/Location";
 import Reviews from "@/components/Reviews";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getHostBySlug } from "@/lib/db";
+import { notFound } from "next/navigation";
 
-export default function Home() {
+export default async function Home() {
+  // In a real multi-tenant app, we'd get the slug from the request headers or subdomain.
+  // For now, we default to "serenity-suites".
+  const host = await getHostBySlug("serenity-suites");
+
+  if (!host) {
+    notFound();
+  }
+
   return (
     <main>
-      <Navbar />
-      <Hero />
-      <TrustStrip />
-      <SpaceBooking />
-      <Gallery />
-      <Pricing />
-      <EnhanceStay />
-      <Amenities />
-      <Location />
-      <Reviews />
-      <Footer />
-      <WhatsAppButton />
+      <Navbar host={host} />
+      <Hero host={host} />
+      <TrustStrip host={host} />
+      <SpaceBooking host={host} />
+      <Gallery host={host} />
+      <Pricing host={host} />
+      <EnhanceStay host={host} />
+      <Amenities host={host} />
+      <Location host={host} />
+      <Reviews host={host} />
+      <Footer host={host} />
+      <WhatsAppButton host={host} />
     </main>
   );
 }

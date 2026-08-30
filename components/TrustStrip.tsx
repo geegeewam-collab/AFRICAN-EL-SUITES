@@ -1,6 +1,11 @@
 "use client";
 
 import { MapPin, Car, KeyRound, ShieldCheck } from "lucide-react";
+import { HostProfile } from "@/lib/types";
+
+interface TrustStripProps {
+  host: HostProfile;
+}
 
 const items = [
   { icon: MapPin, label: "South B, Nairobi", sub: "A safe, quiet sanctuary" },
@@ -9,7 +14,7 @@ const items = [
   { icon: ShieldCheck, label: "Secure Direct Pay", sub: "Verified M-Pesa transactions" },
 ];
 
-export default function TrustStrip() {
+export default function TrustStrip({ host }: TrustStripProps) {
   return (
     <section style={{ backgroundColor: "#0B1526", borderTop: "1px solid rgba(184,147,90,0.12)", borderBottom: "1px solid rgba(184,147,90,0.12)" }}>
       <div className="max-w-6xl mx-auto px-5 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4">
