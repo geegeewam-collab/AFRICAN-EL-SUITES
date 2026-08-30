@@ -4,6 +4,11 @@ import {
   Wifi, Tv, Car, Shield, ArrowUpDown, Coffee,
   Utensils, Volume2, Plane, MapPin, Zap, Bath,
 } from "lucide-react";
+import { HostProfile } from "@/lib/types";
+
+interface AmenitiesProps {
+  host: HostProfile;
+}
 
 const amenities = [
   { icon: Wifi, label: "High-Speed WiFi", desc: "Fibre broadband" },
@@ -20,7 +25,7 @@ const amenities = [
   { icon: Zap, label: "Backup Power", desc: "Generator ready" },
 ];
 
-export default function Amenities() {
+export default function Amenities({ host }: AmenitiesProps) {
   return (
     <section id="amenities" className="section-pad" style={{ backgroundColor: "#F6F1E6" }}>
       <div className="max-w-6xl mx-auto">

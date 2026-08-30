@@ -1,22 +1,26 @@
 import { MapPin, Phone, Mail } from "lucide-react";
-import { WHATSAPP_NUMBER, CONTACT_EMAIL, INSTAGRAM_HANDLE, ADDRESS } from "@/lib/siteConfig";
+import { HostProfile } from "@/lib/types";
 
-export default function Footer() {
+interface FooterProps {
+  host: HostProfile;
+}
+
+export default function Footer({ host }: FooterProps) {
   const year = new Date().getFullYear();
 
   return (
     <footer style={{ backgroundColor: "#070E1A" }}>
       <div className="max-w-6xl mx-auto px-5 py-16 grid grid-cols-1 md:grid-cols-3 gap-12">
         <div>
-          <h3 className="text-2xl font-serif text-white mb-2">Serenity Suites</h3>
+          <h3 className="text-2xl font-serif text-white mb-2">{host.name}</h3>
           <p className="text-xs tracking-[0.25em] uppercase mb-5" style={{ color: "#D4B483" }}>Nairobi</p>
           <p className="text-white/50 text-sm leading-relaxed mb-6">
             A private apartment in South B — where comfort meets convenience,
             ten minutes from JKIA.
           </p>
-          {INSTAGRAM_HANDLE && (
+          {host.instagramHandle && (
             <a
-              href={`https://instagram.com/${INSTAGRAM_HANDLE}`}
+              href={`https://instagram.com/${host.instagramHandle}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -55,13 +59,13 @@ export default function Footer() {
             <li className="flex items-start gap-3">
               <MapPin size={15} style={{ color: "#D4B483", flexShrink: 0, marginTop: 2 }} />
               <span className="text-white/50 text-sm leading-relaxed">
-                {ADDRESS.line1}<br />{ADDRESS.line2}<br />{ADDRESS.area}
+                {host.address.line1}<br />{host.address.line2}<br />{host.address.area}
               </span>
             </li>
             <li className="flex items-center gap-3">
               <Phone size={15} style={{ color: "#D4B483", flexShrink: 0 }} />
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                href={`https://wa.me/${host.whatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white/50 text-sm hover:text-white transition-colors"
@@ -71,7 +75,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3">
               <Mail size={15} style={{ color: "#D4B483", flexShrink: 0 }} />
-              <span className="text-white/50 text-sm">{CONTACT_EMAIL}</span>
+              <span className="text-white/50 text-sm">{host.contactEmail}</span>
             </li>
           </ul>
         </div>
@@ -79,7 +83,7 @@ export default function Footer() {
 
       <div className="border-t px-5 py-5" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-white/30 text-xs">© {year} Serenity Suites Nairobi. All rights reserved.</p>
+          <p className="text-white/30 text-xs">© {year} {host.name}. All rights reserved.</p>
           <p className="text-white/20 text-xs">South B · Nairobi · Kenya</p>
         </div>
       </div>
