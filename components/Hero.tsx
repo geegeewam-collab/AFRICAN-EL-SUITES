@@ -37,8 +37,8 @@ Could you please check availability for these dates?`;
     <section className="relative min-h-[720px] flex items-end overflow-hidden pt-28 pb-40 md:pb-48">
       <div className="absolute inset-0 z-0">
         <Image
-          src="/images/living-room-tv.jpg"
-          alt={`Living room at ${host.name}`}
+          src={host.heroImage}
+          alt={`${host.name} — ${host.address.area}`}
           fill
           priority
           className="object-cover object-[center_30%]"

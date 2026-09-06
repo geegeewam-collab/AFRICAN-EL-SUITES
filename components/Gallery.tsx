@@ -11,19 +11,9 @@ interface GalleryProps {
   host: HostProfile;
 }
 
-const images = [
-  { src: "/images/living-room-tv.jpg", alt: "Living room and TV lounge with cobalt curtains", label: "Living Room" },
-  { src: "/images/living-room-main.jpg", alt: "Sofa corner beneath the cobalt curtains", label: "Lounge Corner" },
-  { src: "/images/bedroom-suite.jpg", alt: "Bedroom with tufted headboard and mirror", label: "Bedroom" },
-  { src: "/images/bedroom-detail.jpg", alt: "Bed detail with chevron accent pillow", label: "Bedroom Detail" },
-  { src: "/images/living-room-lounge.jpg", alt: "Sofa and coffee table with fresh flowers", label: "Coffee Corner" },
-  { src: "/images/kitchen-bar.jpg", alt: "Breakfast bar and kitchenette", label: "Breakfast Bar" },
-  { src: "/images/kitchen-detail.jpg", alt: "Fitted kitchen cabinetry and cooktop", label: "Kitchenette" },
-  { src: "/images/styling-detail.jpg", alt: "Styling detail, fresh greenery", label: "Details" },
-];
-
 export default function Gallery({ host }: GalleryProps) {
   const [index, setIndex] = useState(-1);
+  const images = host.gallery;
   const slides = images.map((img) => ({ src: img.src, alt: img.alt }));
 
   return (

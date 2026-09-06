@@ -91,17 +91,17 @@ Please confirm receipt of payment and send me the house rules!`;
 
           <div className="grid grid-cols-2 gap-2.5 mt-8">
             <div className="relative rounded-sm overflow-hidden row-span-2" style={{ aspectRatio: "3/4" }}>
-              <Image src="/images/bedroom-suite.jpg" alt="Bedroom suite" fill className="object-cover" sizes="30vw" />
+              <Image src={host.gallery[0].src} alt={host.gallery[0].alt} fill className="object-cover" sizes="30vw" />
             </div>
             <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "4/3" }}>
-              <Image src="/images/living-room-lounge.jpg" alt="Lounge area" fill className="object-cover" sizes="30vw" />
+              <Image src={host.gallery[1].src} alt={host.gallery[1].alt} fill className="object-cover" sizes="30vw" />
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                <Image src="/images/kitchen-bar.jpg" alt="Kitchen bar" fill className="object-cover" sizes="15vw" />
+                <Image src={host.gallery[2].src} alt={host.gallery[2].alt} fill className="object-cover" sizes="15vw" />
               </div>
               <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                <Image src="/images/styling-detail.jpg" alt="Styling detail" fill className="object-cover" sizes="15vw" />
+                <Image src={host.gallery[3].src} alt={host.gallery[3].alt} fill className="object-cover" sizes="15vw" />
               </div>
             </div>
           </div>
