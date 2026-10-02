@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone, Users, CreditCard } from "lucide-react";
 import { HostProfile } from "@/lib/types";
+import { quote } from "@/lib/pricing";
 
 interface SpaceBookingProps {
   host: HostProfile;
@@ -17,16 +18,33 @@ const steps = [
 
 export default function SpaceBooking({ host }: SpaceBookingProps) {
   const [sending, setSending] = useState(false);
+  const [done, setDone] = useState(false);
   const [dates, setDates] = useState({ checkin: "", checkout: "" });
   const [guests, setGuests] = useState("1");
   const [guestInfo, setGuestInfo] = useState({ name: "", phone: "" });
 
+  const today = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+  const q = quote(dates.checkin, dates.checkout);
+
   const waLink = (message: string) =>
     `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+  const confirmLink = waLink(`Hi! I've just paid my M-Pesa deposit for my stay at ${host.name}.
+
+👤 Name: ${guestInfo.name}
+📅 Dates: ${dates.checkin} to ${dates.checkout}
+👥 Guests: ${guests}
+
+Please confirm and send me the house rules!`);
 
   const startBooking = async () => {
     if (!guestInfo.name || !guestInfo.phone) {
       alert("Please enter your name and phone number to continue.");
+      return;
+    }
+
+    if (!q) {
+      alert("Please choose valid check-in and check-out dates.");
       return;
     }
 
@@ -38,30 +56,18 @@ export default function SpaceBooking({ host }: SpaceBookingProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          hostId: host.id,
           guestName: guestInfo.name,
           guestPhone: guestInfo.phone,
           checkIn: dates.checkin,
           checkOut: dates.checkout,
           guests: guests,
-          totalAmount: host.nightlyRate.weekday, // Simplified for now
-          depositAmount: host.nightlyRate.weekday / 2,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // 2. If payment is triggered, send them to WhatsApp for the confirmation
-        const message = `Hi! I've just triggered the deposit for my stay at ${host.name}.
-
-👤 Name: ${guestInfo.name}
-📅 Dates: ${dates.checkin || "TBD"} to ${dates.checkout || "TBD"}
-👥 Guests: ${guests}
-
-Please confirm receipt of payment and send me the house rules!`;
-
-        window.open(waLink(message), "_blank", "noopener,noreferrer");
+        setDone(true);
       } else {
         alert(`Payment Error: ${result.error}`);
       }
@@ -135,12 +141,36 @@ Please confirm receipt of payment and send me the house rules!`;
             })}
           </div>
 
+          {done ? (
+            <div className="text-center py-6">
+              <Smartphone className="mx-auto mb-4" size={32} color="#D4B483" />
+              <h4 className="text-white font-serif text-xl mb-2">Check your phone</h4>
+              <p className="text-white/55 text-sm leading-relaxed mb-6">
+                Enter your M-Pesa PIN to pay the KES {q?.deposit.toLocaleString()} deposit. Once it goes through, tap
+                below so we can send your house rules and access details.
+              </p>
+              <a
+                href={confirmLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full py-4 text-sm font-medium rounded-sm"
+                style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
+              >
+                Confirm on WhatsApp <ArrowRight size={15} />
+              </a>
+              <button onClick={() => setDone(false)} className="mt-4 text-white/35 text-xs underline">
+                Payment didn&apos;t come through? Try again
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="space-y-6 mb-8">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-in</label>
                 <input
                   type="date"
+                  min={today}
                   className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
                   onChange={(e) => setDates({...dates, checkin: e.target.value})}
                 />
@@ -149,6 +179,7 @@ Please confirm receipt of payment and send me the house rules!`;
                 <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Check-out</label>
                 <input
                   type="date"
+                  min={dates.checkin || today}
                   className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm focus:outline-none focus:border-[#B8935A] transition-colors"
                   onChange={(e) => setDates({...dates, checkout: e.target.value})}
                 />
@@ -212,8 +243,12 @@ Please confirm receipt of payment and send me the house rules!`;
             )}
           </button>
           <p className="text-white/30 text-xs text-center mt-4">
-            Deposit of KES {(host.nightlyRate.weekday / 2).toLocaleString()} secures your stay
+            {q
+              ? `KES ${q.total.toLocaleString()} for ${q.nights} night${q.nights > 1 ? "s" : ""} · deposit KES ${q.deposit.toLocaleString()} secures your stay`
+              : "Pick your dates to see your total and deposit"}
           </p>
+          </>
+          )}
         </div>
       </div>
     </section>

@@ -6,7 +6,7 @@ export interface GalleryImage {
 
 export interface HostProfile {
   id: string;
-  slug: string; // e.g. "serenity-suites" — this becomes the URL: /serenity-suites
+  slug: string;
   name: string;
   whatsappNumber: string;
   contactEmail: string;
@@ -34,14 +34,16 @@ export interface HostProfile {
 
 export interface Booking {
   id: string;
-  hostId: string;
   guestName: string;
   guestPhone: string;
   checkIn: string;
   checkOut: string;
   guests: number;
+  nights: number;
   totalAmount: number;
   depositAmount: number;
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  createdAt: Date;
+  commissionAmount: number;
+  paymentStatus: "pending" | "paid" | "failed";
+  mpesaReceipt?: string | null;
+  createdAtMs: number;
 }

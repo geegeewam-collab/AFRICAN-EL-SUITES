@@ -1,10 +1,10 @@
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { db } from "./firebase";
 import { HostProfile } from "./types";
 
-// Fallback host so the platform still works end-to-end before any
-// Firestore data exists, and so local dev never crashes on missing keys.
-const FALLBACK_HOST: HostProfile = {
+// ONE property, ONE site. To reuse this for the next client, edit this file,
+// swap the images in /public/images, and set the env vars. Nothing else.
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://africaelsuites.com";
+
+export const property: HostProfile = {
   id: "host_1",
   slug: "serenity-suites",
   name: "Serenity Suites Nairobi",
@@ -42,42 +42,3 @@ const FALLBACK_HOST: HostProfile = {
     { src: "/images/kitchen-detail.jpg", alt: "Fitted kitchen cabinetry and cooktop", label: "Kitchenette" },
   ],
 };
-
-export async function getHostBySlug(slug: string): Promise<HostProfile | null> {
-  try {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      console.warn("Firebase config missing. Using fallback host.");
-      return slug === FALLBACK_HOST.slug ? FALLBACK_HOST : null;
-    }
-
-    const hostsRef = collection(db, "hosts");
-    const q = query(hostsRef, where("slug", "==", slug));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      console.warn(`No host found in Firestore for slug "${slug}". Using fallback host if applicable.`);
-      return slug === FALLBACK_HOST.slug ? FALLBACK_HOST : null;
-    }
-
-    const docData = querySnapshot.docs[0].data();
-    return { id: querySnapshot.docs[0].id, ...docData } as HostProfile;
-  } catch (error) {
-    console.error("Error fetching host:", error);
-    return slug === FALLBACK_HOST.slug ? FALLBACK_HOST : null;
-  }
-}
-
-export async function getAllHosts(): Promise<HostProfile[]> {
-  try {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      return [FALLBACK_HOST];
-    }
-    const hostsRef = collection(db, "hosts");
-    const querySnapshot = await getDocs(hostsRef);
-    const hosts = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as HostProfile));
-    return hosts.length > 0 ? hosts : [FALLBACK_HOST];
-  } catch (error) {
-    console.error("Error fetching all hosts:", error);
-    return [FALLBACK_HOST];
-  }
-}

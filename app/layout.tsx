@@ -1,25 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { property, SITE_URL } from "@/lib/property";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://africaelsuites.com"), // ← REPLACE once the real platform domain is live
-  title: "African El Suites | Curated Short-Stay Apartments in Kenya",
-  description:
-    "Book direct, furnished short-stay apartments across Kenya. No booking fees, M-Pesa accepted, real photos only.",
-  icons: {
-    icon: "/favicon.svg",
-  },
-  robots: {
-    index: true,
-    follow: true,
+  metadataBase: new URL(SITE_URL),
+  title: `${property.name} | ${property.address.area} Short Stay`,
+  description: property.heroSubtext,
+  icons: { icon: "/favicon.svg" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: property.name,
+    description: property.heroSubtext,
+    type: "website",
+    locale: "en_KE",
+    images: [{ url: property.heroImage, width: 1600, height: 900, alt: property.name }],
   },
 };
-
-// NOTE: Per-property metadata (title, description, OG image, JSON-LD) lives
-// in app/[slug]/page.tsx via generateMetadata() — every listing needs its
-// own SEO identity, not the platform's. This root layout only covers
-// platform-wide defaults and the pages that aren't a specific property
-// (like the "/" directory and 404).
 
 export default function RootLayout({
   children,
