@@ -49,6 +49,25 @@ export default function SpaceBooking({ host }: SpaceBookingProps) {
   const [guests, setGuests] = useState("1");
   const [guestInfo, setGuestInfo] = useState({ name: "", phone: "" });
 
+  // Read dates from sessionStorage (set by Hero section)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const heroCheckIn = sessionStorage.getItem("hero_checkin");
+      const heroCheckOut = sessionStorage.getItem("hero_checkout");
+      const heroGuests = sessionStorage.getItem("hero_guests");
+
+      if (heroCheckIn && heroCheckOut) {
+        setDates({ checkin: heroCheckIn, checkout: heroCheckOut });
+        sessionStorage.removeItem("hero_checkin");
+        sessionStorage.removeItem("hero_checkout");
+      }
+      if (heroGuests) {
+        setGuests(heroGuests);
+        sessionStorage.removeItem("hero_guests");
+      }
+    }
+  }, []);
+
   const q = quote(dates.checkin, dates.checkout);
 
   const waLink = (message: string) =>

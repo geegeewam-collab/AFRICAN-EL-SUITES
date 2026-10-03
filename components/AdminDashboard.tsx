@@ -32,16 +32,20 @@ interface Props {
   bookings: Booking[];
   blocks: Block[];
   propertyName: string;
+  propertyWhatsApp: string;
   commissionRate: number;
 }
 
-export default function AdminDashboard({ bookings, blocks, propertyName, commissionRate }: Props) {
+export default function AdminDashboard({ bookings, blocks, propertyName, propertyWhatsApp, commissionRate }: Props) {
   const router = useRouter();
   const [month, setMonth] = useState(todayNairobi().slice(0, 7));
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [block, setBlock] = useState({ checkIn: "", checkOut: "", note: "" });
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const act = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -54,6 +58,43 @@ export default function AdminDashboard({ bookings, blocks, propertyName, commiss
       const json = await res.json().catch(() => ({}));
       if (!res.ok) alert(json.error || "Something went wrong.");
       else router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.new !== passwordForm.confirm) {
+      setPasswordMsg({ type: "error", text: "New passwords do not match." });
+      return;
+    }
+    if (passwordForm.new.length < 12) {
+      setPasswordMsg({ type: "error", text: "Password must be at least 12 characters." });
+      return;
+    }
+    setBusy(true);
+    setPasswordMsg(null);
+    try {
+      const res = await fetch("/api/admin/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordForm.current,
+          newPassword: passwordForm.new,
+          confirmPassword: passwordForm.confirm,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPasswordMsg({ type: "error", text: json.error || "Failed to change password." });
+      } else {
+        setPasswordMsg({ type: "success", text: "Password updated successfully." });
+        setPasswordForm({ current: "", new: "", confirm: "" });
+        setShowPasswordForm(false);
+      }
+    } catch {
+      setPasswordMsg({ type: "error", text: "Network error. Please try again." });
     } finally {
       setBusy(false);
     }
@@ -148,6 +189,78 @@ export default function AdminDashboard({ bookings, blocks, propertyName, commiss
           </div>
         </section>
 
+        {/* Change Password */}
+        <section className={`${card} mb-8`} style={cardStyle}>
+          {showPasswordForm ? (
+            <form onSubmit={changePassword}>
+              <h2 className="font-serif text-lg mb-4">Change Password</h2>
+              {passwordMsg && (
+                <div className={`mb-4 p-3 rounded-sm text-sm ${passwordMsg.type === "success" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+                  {passwordMsg.text}
+                </div>
+              )}
+              <div className="space-y-3 mb-4">
+                <label className="flex flex-col gap-1.5 text-white/50 text-sm">
+                  Current Password
+                  <input
+                    type="password"
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                    className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm"
+                    required
+                    disabled={busy}
+                    autoComplete="current-password"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5 text-white/50 text-sm">
+                  New Password (min 12 chars)
+                  <input
+                    type="password"
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
+                    className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm"
+                    required
+                    disabled={busy}
+                    autoComplete="new-password"
+                    minLength={12}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5 text-white/50 text-sm">
+                  Confirm New Password
+                  <input
+                    type="password"
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                    className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm"
+                    required
+                    disabled={busy}
+                    autoComplete="new-password"
+                    minLength={12}
+                  />
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" disabled={busy} className={btn} style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526", border: "none" }}>
+                  {busy ? "Updating..." : "Update Password"}
+                </button>
+                <button type="button" onClick={() => { setShowPasswordForm(false); setPasswordMsg(null); }} disabled={busy} className={btn}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-serif text-lg mb-1">Change Password</h2>
+                <p className="text-white/40 text-xs">Update your admin login password.</p>
+              </div>
+              <button onClick={() => setShowPasswordForm(true)} className={btn}>
+                Change Password
+              </button>
+            </div>
+          )}
+        </section>
+
         {/* Blocked dates */}
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Blocked dates</h2>
@@ -236,6 +349,12 @@ export default function AdminDashboard({ bookings, blocks, propertyName, commiss
                   <p className="text-white/30 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
                   <div className="flex gap-2 mt-3 flex-wrap">
                     <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                    {b.whatsappConfirmationMessage && (
+                      <a className={btn} href={`https://wa.me/${b.guestPhone}?text=${encodeURIComponent(b.whatsappConfirmationMessage)}`} target="_blank" rel="noopener noreferrer" title="Send booking confirmation to guest">✅ Send Confirmation</a>
+                    )}
+                    {b.ownerNotificationMessage && (
+                      <a className={btn} href={`https://wa.me/${propertyWhatsApp}?text=${encodeURIComponent(b.ownerNotificationMessage)}`} target="_blank" rel="noopener noreferrer" title="Notify owner on WhatsApp">📱 Notify Owner</a>
+                    )}
                     <a className={btn} href={`tel:+${b.guestPhone}`}>Call</a>
                     {(b.paymentStatus === "pending" || b.paymentStatus === "failed") && (
                       <button className={btn} disabled={busy}

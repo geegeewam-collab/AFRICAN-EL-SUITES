@@ -47,5 +47,5 @@ export default async function AdminPage({ searchParams }: { searchParams: { e?: 
   const bookings = bk.docs.map((d) => ({ id: d.id, ...d.data() })) as Booking[];
   const blocks = bl.docs.map((d: typeof bl.docs[0]) => ({ id: d.id, ...d.data() })) as Block[];
 
-  return <AdminDashboard bookings={bookings} blocks={blocks} propertyName={property.name} commissionRate={COMMISSION_RATE} />;
+  return <AdminDashboard bookings={bookings} blocks={blocks} propertyName={property.name} propertyWhatsApp={property.whatsappNumber} commissionRate={COMMISSION_RATE} />;
 }

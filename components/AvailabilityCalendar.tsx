@@ -63,9 +63,9 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
         </div>
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {DOW.map((d, i) => (
-            <span key={i} className="text-white/30 text-[10px] uppercase py-1">
+            <div key={i} className="size-10 flex items-center justify-center text-white/30 text-[9px] uppercase font-medium">
               {d}
-            </span>
+            </div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-0.5">

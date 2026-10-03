@@ -54,6 +54,9 @@ export interface Booking {
   updatedAtMs: number;
   paidAtMs?: number;
   cancelledAtMs?: number;
+  // Added after successful payment
+  whatsappConfirmationMessage?: string | null;
+  ownerNotificationMessage?: string | null;
 }
 
 export interface Block {

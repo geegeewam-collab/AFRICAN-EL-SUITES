@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { markPaid, markFailed } from "@/lib/payments";
 import { sendBookingAlert } from "@/lib/notify";
-import { generateBookingConfirmationWhatsApp } from "@/lib/whatsapp";
+import { generateBookingConfirmationWhatsApp, generateOwnerNotificationWhatsApp } from "@/lib/whatsapp";
 
 // Safaricom calls this after the guest enters (or cancels) their PIN.
 // Set DARAJA_CALLBACK_URL = https://YOURDOMAIN/api/mpesa/callback?token=<DARAJA_CALLBACK_SECRET>
@@ -48,7 +48,26 @@ export async function POST(req: Request) {
             depositAmount: b.depositAmount,
           });
 
-          console.log("Booking confirmed. WhatsApp message for guest:", waMessage);
+          const ownerWaMessage = generateOwnerNotificationWhatsApp({
+            bookingId: doc.id,
+            guestName: b.guestName,
+            guestPhone: b.guestPhone,
+            checkIn: b.checkIn,
+            checkOut: b.checkOut,
+            guests: b.guests,
+            totalAmount: b.totalAmount,
+            depositAmount: b.depositAmount,
+          });
+
+          // Store WhatsApp messages in booking for admin/guest access
+          await adminDb().collection("bookings").doc(doc.id).update({
+            whatsappConfirmationMessage: waMessage,
+            ownerNotificationMessage: ownerWaMessage,
+            updatedAtMs: Date.now(),
+          });
+
+          console.log("Booking confirmed. Guest WhatsApp:", waMessage);
+          console.log("Booking confirmed. Owner WhatsApp:", ownerWaMessage);
         } catch (e) {
           console.error("Booking alert failed (booking is still saved):", e);
         }
