@@ -1,7 +1,15 @@
-import { property } from "./property";
+// Single source of truth for all pricing configuration
+export const PRICING_CONFIG = {
+  weekdayRate: 3500,
+  weekendRate: 4000,
+  depositRate: 0.5,      // 50% deposit to lock dates
+  commissionRate: 0.015, // 1.5% developer commission
+  maxNights: 30,
+  maxGuests: 2,
+} as const;
 
-export const DEPOSIT_RATE = 0.5; // guest pays 50% to lock the dates
-export const COMMISSION_RATE = 0.02; // your cut, logged on every booking
+export const DEPOSIT_RATE = PRICING_CONFIG.depositRate;
+export const COMMISSION_RATE = PRICING_CONFIG.commissionRate;
 
 const DAY = 86400000;
 const toUTC = (d: string) => {
@@ -18,17 +26,30 @@ export function quote(checkIn: string, checkOut: string) {
   if (checkIn < today) return null;
   const start = toUTC(checkIn);
   const nights = Math.round((toUTC(checkOut) - start) / DAY);
-  if (nights < 1 || nights > 30) return null;
+  if (nights < 1 || nights > PRICING_CONFIG.maxNights) return null;
 
+  let weekdayNights = 0;
+  let weekendNights = 0;
   let total = 0;
+
   for (let i = 0; i < nights; i++) {
     const dow = new Date(start + i * DAY).getUTCDay(); // Fri & Sat nights = weekend rate
-    total += dow === 5 || dow === 6 ? property.nightlyRate.weekend : property.nightlyRate.weekday;
+    if (dow === 5 || dow === 6) {
+      weekendNights++;
+      total += PRICING_CONFIG.weekendRate;
+    } else {
+      weekdayNights++;
+      total += PRICING_CONFIG.weekdayRate;
+    }
   }
+
   return {
     nights,
+    weekdayNights,
+    weekendNights,
     total,
     deposit: Math.round(total * DEPOSIT_RATE),
     commission: Math.round(total * COMMISSION_RATE),
+    balance: Math.round(total * (1 - DEPOSIT_RATE)),
   };
 }

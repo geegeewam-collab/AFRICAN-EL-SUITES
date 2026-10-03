@@ -1,5 +1,7 @@
 import { adminDb } from "./firebaseAdmin";
 import { quote } from "./pricing";
+import { getUnavailableRanges } from "./availability";
+import { rangeFree } from "./dates";
 
 const BASE =
   process.env.DARAJA_ENV === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
@@ -21,29 +23,60 @@ export async function createBooking(input: {
   const q = quote(input.checkIn, input.checkOut);
   if (!q) throw new Error("Please choose valid dates.");
 
-  // Block double-booking: paid stays, plus unpaid holds younger than 15 min.
-  const recent = Date.now() - 15 * 60 * 1000;
-  const snap = await adminDb().collection("bookings").where("checkIn", "<", input.checkOut).get();
-  const clash = snap.docs.some((d) => {
-    const b = d.data();
-    return b.checkOut > input.checkIn && (b.paymentStatus === "paid" || (b.paymentStatus === "pending" && b.createdAtMs > recent));
-  });
-  if (clash) throw new Error("Sorry, those dates were just taken. Try different dates.");
+  // Block double-booking: paid stays, fresh unpaid holds, and owner-blocked dates.
+  if (!rangeFree(input.checkIn, input.checkOut, await getUnavailableRanges())) {
+    throw new Error("Sorry, those dates were just taken. Try different dates.");
+  }
 
   const ref = await adminDb().collection("bookings").add({
     ...input,
     nights: q.nights,
+    weekdayNights: q.weekdayNights,
+    weekendNights: q.weekendNights,
     totalAmount: q.total,
     depositAmount: q.deposit,
-    commissionAmount: q.commission, // 2% of total, for your monthly statement
+    balanceAmount: q.balance,
+    commissionAmount: q.commission,
     paymentStatus: "pending",
+    bookingStatus: "pending",
     createdAtMs: Date.now(),
+    updatedAtMs: Date.now(),
   });
-  return { id: ref.id, deposit: q.deposit };
+  return {
+    id: ref.id,
+    deposit: q.deposit,
+    totalAmount: q.total,
+    balanceAmount: q.balance,
+    weekdayNights: q.weekdayNights,
+    weekendNights: q.weekendNights,
+  };
 }
 
 export async function markFailed(bookingId: string) {
-  await adminDb().collection("bookings").doc(bookingId).update({ paymentStatus: "failed" });
+  await adminDb().collection("bookings").doc(bookingId).update({
+    paymentStatus: "failed",
+    bookingStatus: "failed",
+    updatedAtMs: Date.now(),
+  });
+}
+
+export async function markPaid(bookingId: string, receipt: string | null) {
+  await adminDb().collection("bookings").doc(bookingId).update({
+    paymentStatus: "paid",
+    bookingStatus: "confirmed",
+    mpesaReceipt: receipt,
+    paidAtMs: Date.now(),
+    updatedAtMs: Date.now(),
+  });
+}
+
+export async function cancelBooking(bookingId: string) {
+  await adminDb().collection("bookings").doc(bookingId).update({
+    paymentStatus: "cancelled",
+    bookingStatus: "cancelled",
+    cancelledAtMs: Date.now(),
+    updatedAtMs: Date.now(),
+  });
 }
 
 async function getToken() {
@@ -69,7 +102,7 @@ export async function triggerStkPush(phone: string, amount: number, bookingId: s
       BusinessShortCode: shortcode,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: process.env.DARAJA_TRANSACTION_TYPE || "CustomerPayBillOnline", // till = CustomerBuyGoodsOnline
+      TransactionType: process.env.DARAJA_TRANSACTION_TYPE || "CustomerPayBillOnline",
       Amount: amount,
       PartyA: phone,
       PartyB: process.env.DARAJA_PARTY_B || shortcode,

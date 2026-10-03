@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     bookingId = booking.id;
 
     await triggerStkPush(phone, booking.deposit, booking.id);
-    return NextResponse.json({ success: true, bookingId });
+    return NextResponse.json({ success: true, bookingId, deposit: booking.deposit });
   } catch (error: any) {
     if (bookingId) await markFailed(bookingId).catch(() => {});
     console.error("Pay API error:", error);

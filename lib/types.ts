@@ -40,10 +40,26 @@ export interface Booking {
   checkOut: string;
   guests: number;
   nights: number;
+  weekdayNights: number;
+  weekendNights: number;
   totalAmount: number;
   depositAmount: number;
+  balanceAmount: number;
   commissionAmount: number;
-  paymentStatus: "pending" | "paid" | "failed";
+  paymentStatus: "pending" | "paid" | "failed" | "cancelled";
+  bookingStatus: "pending" | "confirmed" | "failed" | "cancelled";
   mpesaReceipt?: string | null;
+  checkoutRequestId?: string | null;
+  createdAtMs: number;
+  updatedAtMs: number;
+  paidAtMs?: number;
+  cancelledAtMs?: number;
+}
+
+export interface Block {
+  id: string;
+  checkIn: string;
+  checkOut: string;
+  note: string;
   createdAtMs: number;
 }

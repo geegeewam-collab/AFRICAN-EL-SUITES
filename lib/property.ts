@@ -2,10 +2,10 @@ import { HostProfile } from "./types";
 
 // ONE property, ONE site. To reuse this for the next client, edit this file,
 // swap the images in /public/images, and set the env vars. Nothing else.
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://africaelsuites.com";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://serenitysuites.co.ke";
 
 export const property: HostProfile = {
-  id: "host_1",
+  id: "serenity-suites",
   slug: "serenity-suites",
   name: "Serenity Suites Nairobi",
   whatsappNumber: "254714324839",
@@ -42,3 +42,6 @@ export const property: HostProfile = {
     { src: "/images/kitchen-detail.jpg", alt: "Fitted kitchen cabinetry and cooktop", label: "Kitchenette" },
   ],
 };
+
+// Backward compatibility alias
+export const host = property;
