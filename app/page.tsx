@@ -8,9 +8,13 @@ import EnhanceStay from "@/components/EnhanceStay";
 import Amenities from "@/components/Amenities";
 import Location from "@/components/Location";
 import Reviews from "@/components/Reviews";
+import Policies from "@/components/Policies";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { property as host, SITE_URL } from "@/lib/property";
+
+// Rebuild the page at most once an hour so the example stay dates never go stale.
+export const revalidate = 3600;
 
 export default function Home() {
   return (
@@ -44,6 +48,7 @@ export default function Home() {
       <Pricing host={host} />
       <EnhanceStay host={host} />
       <Amenities host={host} />
+      <Policies host={host} />
       <Location host={host} />
       <Reviews host={host} />
       <Footer host={host} />

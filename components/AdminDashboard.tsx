@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Block, Booking } from "@/lib/types";
 import { todayNairobi } from "@/lib/dates";
-import { COMMISSION_RATE, PRICING_CONFIG } from "@/lib/pricing";
+import { PRICING_CONFIG } from "@/lib/pricing";
+import { bookingRef } from "@/lib/ref";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const pct = (r: number) => `${Number((r * 100).toFixed(2))}%`;
 const kes = (n: number) => `KES ${Number(n || 0).toLocaleString("en-US")}`;
 const nice = (s: string) => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const when = (ms: number) =>
@@ -19,35 +21,44 @@ const CHIP: Record<string, string> = {
   cancelled: "bg-white/10 text-white/50",
 };
 
-const BOOKING_STATUS_CHIP: Record<string, string> = {
-  confirmed: "bg-emerald-500/15 text-emerald-300",
-  pending: "bg-amber-500/15 text-amber-300",
-  failed: "bg-red-500/15 text-red-300",
-  cancelled: "bg-white/10 text-white/50",
-};
+const STATUS_LABEL: Record<string, string> = { paid: "Paid", pending: "Awaiting payment", failed: "Payment failed", cancelled: "Cancelled" };
 
 type Filter = "all" | "paid" | "pending" | "other";
+
+export interface Health {
+  payments: boolean;
+  paymentsLive: boolean;
+  sms: boolean;
+  smsSandbox: boolean;
+  email: boolean;
+  icalExport: boolean;
+  icalImports: number;
+}
 
 interface Props {
   bookings: Booking[];
   blocks: Block[];
   propertyName: string;
-  propertyWhatsApp: string;
+  propertyWhatsApp?: string;
   commissionRate: number;
+  health: Health;
+  icalUrl: string | null;
 }
 
-export default function AdminDashboard({ bookings, blocks, propertyName, propertyWhatsApp, commissionRate }: Props) {
+export default function AdminDashboard({ bookings, blocks, propertyName, propertyWhatsApp, commissionRate, health, icalUrl }: Props) {
   const router = useRouter();
   const [month, setMonth] = useState(todayNairobi().slice(0, 7));
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [block, setBlock] = useState({ checkIn: "", checkOut: "", note: "" });
+  const [manual, setManual] = useState({ guestName: "", guestPhone: "", checkIn: "", checkOut: "", guests: "2" });
+  const [linkCopied, setLinkCopied] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const act = async (body: Record<string, unknown>) => {
+  const act = async (body: Record<string, unknown>): Promise<boolean> => {
     setBusy(true);
     try {
       const res = await fetch("/api/admin/action", {
@@ -56,8 +67,12 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
         body: JSON.stringify(body),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) alert(json.error || "Something went wrong.");
-      else router.refresh();
+      if (!res.ok) {
+        alert(json.error || "Something went wrong.");
+        return false;
+      }
+      router.refresh();
+      return true;
     } finally {
       setBusy(false);
     }
@@ -114,7 +129,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
     `${propertyName} | ${monthLabel}`,
     `${paid.length} paid booking${paid.length === 1 ? "" : "s"}, ${nights} night${nights === 1 ? "" : "s"}`,
     `Booked through the site: ${kes(booked)}`,
-    `Commission (${Math.round(commissionRate * 100)}%): ${kes(commission)}`,
+    `Commission (${pct(commissionRate)}): ${kes(commission)}`,
     "",
     ...paid.map((b) => `- ${nice(b.checkIn)} to ${nice(b.checkOut)} | ${b.guestName} | ${kes(b.totalAmount)} | ${kes(b.commissionAmount)}`),
   ].join("\n");
@@ -151,6 +166,44 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </form>
         </div>
 
+        {/* Setup status */}
+        <section className={`${card} mb-8`} style={cardStyle}>
+          <h2 className="font-serif text-lg mb-3">Setup status</h2>
+          <ul className="space-y-2 text-sm">
+            <Check ok={health.payments && health.paymentsLive} warn={health.payments !== health.paymentsLive} label="Online M-Pesa payments"
+              hint={!health.payments ? "Not set up: the site sends WhatsApp booking requests instead" : !health.paymentsLive ? "Daraja is ready but the booking form still uses WhatsApp. Set NEXT_PUBLIC_PAYMENTS_ENABLED=true and redeploy" : "Live"} />
+            <Check ok={health.sms && !health.smsSandbox} warn={health.sms && health.smsSandbox} label="Automatic SMS to guest and owner"
+              hint={!health.sms ? "Not set up (Africa's Talking keys missing)" : health.smsSandbox ? "Sandbox mode: messages are NOT delivered. Switch AT_USERNAME to your real username" : "Live"} />
+            <Check ok={health.email} label="Email alert to owner" hint={health.email ? "Live" : "Not set up (Gmail app password missing)"} />
+            <Check ok={health.icalExport} label="Send our bookings to Airbnb / Booking.com" hint={health.icalExport ? "Calendar link ready (below)" : "Not set up (ICAL_EXPORT_TOKEN missing)"} />
+            <Check ok={health.icalImports > 0} label="Read Airbnb / Booking.com bookings" hint={health.icalImports > 0 ? `${health.icalImports} calendar${health.icalImports > 1 ? "s" : ""} connected` : "Not set up (ICAL_IMPORT_URLS missing)"} />
+          </ul>
+          {icalUrl && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-white/50 text-xs mb-2">
+                Paste this link into Airbnb / Booking.com under &quot;Import calendar&quot; so they block nights booked on this site:
+              </p>
+              <div className="flex gap-2">
+                <input readOnly value={icalUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-sm p-2 text-white/70 text-xs" />
+                <button
+                  className={btn}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(icalUrl);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    } catch {
+                      prompt("Copy this link:", icalUrl);
+                    }
+                  }}
+                >
+                  {linkCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Monthly summary */}
         <section className={`${card} mb-8`} style={cardStyle}>
           <div className="flex items-center justify-between mb-4">
@@ -166,7 +219,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
             <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">Commission ({Math.round(commissionRate * 100)}%)</p>
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">Commission ({pct(commissionRate)})</p>
               <p className="text-xl font-serif" style={{ color: "#D4B483" }}>{kes(commission)}</p>
             </div>
             <button className={btn} onClick={copy}>{copied ? "Copied" : "Copy statement"}</button>
@@ -185,7 +238,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             <div className="text-white/50">Deposit rate</div>
             <div style={{ color: "#D4B483" }}>{Math.round(PRICING_CONFIG.depositRate * 100)}%</div>
             <div className="text-white/50">Developer commission</div>
-            <div style={{ color: "#D4B483" }}>{Math.round(PRICING_CONFIG.commissionRate * 100)}%</div>
+            <div style={{ color: "#D4B483" }}>{pct(PRICING_CONFIG.commissionRate)}</div>
           </div>
         </section>
 
@@ -261,6 +314,46 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           )}
         </section>
 
+        {/* Add a booking by hand */}
+        <section className="mb-8">
+          <h2 className="font-serif text-lg mb-1">Add a booking</h2>
+          <p className="text-white/40 text-xs mb-3">For guests who booked by WhatsApp, phone or cash. It blocks the dates and counts in the monthly statement.</p>
+          <div className={card} style={cardStyle}>
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <input placeholder="Guest name" value={manual.guestName} onChange={(e) => setManual({ ...manual, guestName: e.target.value })}
+                className="bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm" />
+              <input placeholder="Phone (optional)" inputMode="tel" value={manual.guestPhone} onChange={(e) => setManual({ ...manual, guestPhone: e.target.value })}
+                className="bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm" />
+              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+                Check-in
+                <input type="date" value={manual.checkIn} onChange={(e) => setManual({ ...manual, checkIn: e.target.value })}
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+              </label>
+              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+                Check-out
+                <input type="date" value={manual.checkOut} onChange={(e) => setManual({ ...manual, checkOut: e.target.value })}
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+              </label>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select value={manual.guests} onChange={(e) => setManual({ ...manual, guests: e.target.value })}
+                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm">
+                <option value="1" className="text-black">1 guest</option>
+                <option value="2" className="text-black">2 guests</option>
+              </select>
+              <button
+                className={btn}
+                disabled={busy}
+                onClick={async () => {
+                  if (await act({ action: "addBooking", ...manual })) setManual({ guestName: "", guestPhone: "", checkIn: "", checkOut: "", guests: "2" });
+                }}
+              >
+                Add booking
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Blocked dates */}
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Blocked dates</h2>
@@ -329,33 +422,44 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                 <li key={b.id} className={card} style={cardStyle}>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <p className="font-medium">{b.guestName}</p>
+                      <p className="font-medium">
+                        {b.guestName} <span className="text-white/35 text-xs font-normal ml-1">{bookingRef(b.id)}{b.source === "manual" ? " · manual" : ""}</span>
+                      </p>
                       <p className="text-white/50 text-xs">
                         {nice(b.checkIn)} to {nice(b.checkOut)} | {b.nights} night{b.nights > 1 ? "s" : ""} | {b.guests} guest{b.guests > 1 ? "s" : ""}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <span className={`px-2 py-0.5 text-[11px] rounded-sm capitalize ${CHIP[b.paymentStatus] ?? CHIP.cancelled}`}>{b.paymentStatus}</span>
-                      <span className={`px-2 py-0.5 text-[11px] rounded-sm capitalize ${BOOKING_STATUS_CHIP[b.bookingStatus] ?? BOOKING_STATUS_CHIP.cancelled}`}>{b.bookingStatus}</span>
-                    </div>
+                    <span className={`px-2 py-0.5 text-[11px] rounded-sm whitespace-nowrap ${CHIP[b.paymentStatus] ?? CHIP.cancelled}`}>{STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}</span>
                   </div>
                   <p className="text-sm text-white/70">
                     Total {kes(b.totalAmount)} | Deposit {kes(b.depositAmount)} | Balance {kes(b.balanceAmount)}
                     {b.mpesaReceipt && <span className="text-white/40"> | {b.mpesaReceipt}</span>}
                     {b.weekdayNights !== undefined && (
-                      <span className="text-white/40 ml-2">({b.weekdayNights}wk / {b.weekendNights}we)</span>
+                      <span className="block text-white/40 text-xs mt-0.5">
+                        {b.weekdayNights} weekday + {b.weekendNights} weekend night{b.nights === 1 ? "" : "s"}
+                      </span>
                     )}
                   </p>
+                  {b.notify && (
+                    <p className="text-[11px] mt-1.5 flex gap-3 flex-wrap">
+                      <Msg label="Guest SMS" v={b.notify.guestSms} />
+                      <Msg label="Owner SMS" v={b.notify.ownerSms} />
+                      <Msg label="Owner email" v={b.notify.ownerEmail} />
+                    </p>
+                  )}
                   <p className="text-white/30 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                    {b.guestPhone && <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+                    {b.paymentStatus === "paid" && b.guestPhone && (
+                      <button className={btn} disabled={busy}
+                        onClick={async () => { if (await act({ action: "resendSms", id: b.id })) alert("SMS sent to the guest."); }}>
+                        Resend SMS
+                      </button>
+                    )}
                     {b.whatsappConfirmationMessage && (
-                      <a className={btn} href={`https://wa.me/${b.guestPhone}?text=${encodeURIComponent(b.whatsappConfirmationMessage)}`} target="_blank" rel="noopener noreferrer" title="Send booking confirmation to guest">✅ Send Confirmation</a>
+                      <a className={btn} href={`https://wa.me/${b.guestPhone}?text=${encodeURIComponent(b.whatsappConfirmationMessage)}`} target="_blank" rel="noopener noreferrer" title="Open WhatsApp with the confirmation message ready to send">WhatsApp confirmation</a>
                     )}
-                    {b.ownerNotificationMessage && (
-                      <a className={btn} href={`https://wa.me/${propertyWhatsApp}?text=${encodeURIComponent(b.ownerNotificationMessage)}`} target="_blank" rel="noopener noreferrer" title="Notify owner on WhatsApp">📱 Notify Owner</a>
-                    )}
-                    <a className={btn} href={`tel:+${b.guestPhone}`}>Call</a>
+                    {b.guestPhone && <a className={btn} href={`tel:+${b.guestPhone}`}>Call</a>}
                     {(b.paymentStatus === "pending" || b.paymentStatus === "failed") && (
                       <button className={btn} disabled={busy}
                         onClick={() => {
@@ -380,6 +484,26 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
       </div>
     </main>
   );
+}
+
+function Check({ ok, warn, label, hint }: { ok: boolean; warn?: boolean; label: string; hint: string }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/40"}`}>
+        {ok ? "✓" : warn ? "!" : "–"}
+      </span>
+      <span>
+        <span className="block text-white/90">{label}</span>
+        <span className={`block text-xs ${warn ? "text-amber-300/80" : "text-white/40"}`}>{hint}</span>
+      </span>
+    </li>
+  );
+}
+
+function Msg({ label, v }: { label: string; v?: string }) {
+  if (!v) return null;
+  const color = v === "sent" ? "text-emerald-300/80" : v === "failed" ? "text-red-300" : "text-white/30";
+  return <span className={color}>{label}: {v}</span>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

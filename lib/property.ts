@@ -20,8 +20,8 @@ export const property: HostProfile = {
     latitude: -1.3192,
     longitude: 36.8328,
   },
-  mapEmbedUrl:
-    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.8189263636!2d36.82081!3d-1.31920!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f11a81dacbf35%3A0x4f8e6e4e4e4e4e4e!2sSouth%20B%2C%20Nairobi!5e0!3m2!1sen!2ske!4v1700000000000!5m2!1sen!2ske",
+  // Map: leave mapEmbedUrl out and the map is built from the address above.
+  // For a pin on the exact building: Google Maps > Share > "Embed a map" > copy the src="..." link into mapEmbedUrl.
   nightlyRate: {
     weekday: 3500,
     weekend: 4000,
@@ -31,6 +31,12 @@ export const property: HostProfile = {
   heroSubtext:
     "A curated retreat ten minutes from JKIA — meticulously styled for the discerning traveler who seeks refuge in a fast-paced city.",
   heroImage: "/images/living-room-tv.jpg",
+  // Real guest reviews only. While this list is empty the Reviews section stays hidden.
+  // Add one after each happy stay, e.g.  { quote: "Spotless and so quiet.", name: "Jane W.", role: "Business traveller" }
+  reviews: [],
+  // House rules / cancellation terms. Hidden while empty. Fill in once the owner has confirmed them, e.g.
+  //   { title: "Check-in & check-out", text: "Check-in from 2pm, check-out by 11am." }
+  policies: [],
   gallery: [
     { src: "/images/bedroom-suite.jpg", alt: "Bedroom with tufted headboard and mirror", label: "Bedroom" },
     { src: "/images/living-room-lounge.jpg", alt: "Sofa and coffee table with fresh flowers", label: "Coffee Corner" },

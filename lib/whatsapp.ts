@@ -1,4 +1,5 @@
 import { property, SITE_URL } from "./property";
+import { bookingRef } from "./ref";
 
 const kes = (n: number) => `KES ${Number(n).toLocaleString("en-US")}`;
 
@@ -31,7 +32,7 @@ export function generateBookingConfirmationWhatsApp(data: BookingConfirmationDat
   };
 
   const balance = data.totalAmount - data.depositAmount;
-  const shortRef = `SS-${data.bookingId.slice(-4).toUpperCase()}`;
+  const shortRef = bookingRef(data.bookingId);
 
   return [
     `✅ Your booking at ${property.name} is confirmed.`,
@@ -113,7 +114,7 @@ export function generateOwnerNotificationWhatsApp(data: BookingConfirmationData 
   };
 
   const balance = data.totalAmount - data.depositAmount;
-  const shortRef = `SS-${data.bookingId.slice(-4).toUpperCase()}`;
+  const shortRef = bookingRef(data.bookingId);
 
   return [
     `🎉 New booking confirmed at ${property.name}`,

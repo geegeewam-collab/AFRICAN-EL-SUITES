@@ -42,7 +42,7 @@ export default function Footer({ host }: FooterProps) {
               { label: "Rates", href: "#pricing" },
               { label: "Amenities", href: "#amenities" },
               { label: "Location", href: "#location" },
-              { label: "Reviews", href: "#reviews" },
+              ...((host.reviews?.length ?? 0) > 0 ? [{ label: "Reviews", href: "#reviews" }] : []),
             ].map((link) => (
               <li key={link.label}>
                 <a href={link.href} className="text-white/50 text-sm hover:text-white transition-colors duration-200">

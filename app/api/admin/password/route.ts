@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAdmin } from "@/lib/adminAuth";
-import { setAdminPassword } from "@/lib/adminAuth";
+import { isAdmin, passwordOk, setAdminPassword } from "@/lib/adminAuth";
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
@@ -17,26 +16,15 @@ export async function POST(req: Request) {
   if (!body) return fail("Bad request.");
 
   const { currentPassword, newPassword, confirmPassword } = body;
-
-  if (!currentPassword || !newPassword || !confirmPassword) {
+  if ([currentPassword, newPassword, confirmPassword].some((v) => typeof v !== "string" || !v)) {
     return fail("All fields are required.");
   }
+  if (newPassword !== confirmPassword) return fail("New passwords do not match.");
+  if (newPassword.length < 12) return fail("Password must be at least 12 characters long.");
+  if (newPassword.length > 200) return fail("Password is too long.");
 
-  if (newPassword !== confirmPassword) {
-    return fail("New passwords do not match.");
-  }
+  if (!(await passwordOk(currentPassword))) return fail("Current password is incorrect.");
 
-  if (newPassword.length < 12) {
-    return fail("Password must be at least 12 characters long.");
-  }
-
-  // Verify current password
-  const ok = await (await import("@/lib/adminAuth")).passwordOk(currentPassword);
-  if (!ok) {
-    return fail("Current password is incorrect.");
-  }
-
-  // Update password
   try {
     await setAdminPassword(newPassword);
     return NextResponse.json({ ok: true, message: "Password updated successfully." });

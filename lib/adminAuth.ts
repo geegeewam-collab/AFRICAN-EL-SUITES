@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual, randomBytes } from "crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { adminDb } from "./firebaseAdmin";
 
@@ -7,6 +7,7 @@ const WEEK_MS = 7 * 24 * 3600 * 1000;
 
 const secret = () => process.env.ADMIN_SESSION_SECRET || "";
 const sign = (payload: string) => createHmac("sha256", secret()).update(payload).digest("hex");
+const safeEqual = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b);
 
 export function makeToken() {
   const exp = String(Date.now() + WEEK_MS);
@@ -17,9 +18,7 @@ export function verifyToken(token?: string | null) {
   if (!token || !secret()) return false;
   const [exp, sig] = token.split(".");
   if (!exp || !sig) return false;
-  const a = Buffer.from(sig);
-  const b = Buffer.from(sign(exp));
-  return a.length === b.length && timingSafeEqual(a, b) && Number(exp) > Date.now();
+  return safeEqual(Buffer.from(sig), Buffer.from(sign(exp))) && Number(exp) > Date.now();
 }
 
 export function isAdmin() {
@@ -27,61 +26,61 @@ export function isAdmin() {
 }
 
 /**
- * Hash a password for storage. Uses PBKDF2-like approach with HMAC-SHA256.
- * Returns: `${salt}:${hash}` (both hex)
+ * Passwords changed from the dashboard are stored in Firestore as
+ *   scrypt$<salt>$<hash>      (current, slow hash)
+ * Older "<salt>:<hash>" (HMAC) values are still accepted so nobody gets locked out.
  */
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = createHmac("sha256", salt).update(password).digest("hex");
-  return `${salt}:${hash}`;
+  return `scrypt$${salt}$${scryptSync(password, salt, 64).toString("hex")}`;
 }
 
-/**
- * Verify a password against a stored hash.
- */
-export function verifyPassword(password: string, storedHash: string): boolean {
-  const [salt, hash] = storedHash.split(":");
+export function verifyPassword(password: string, stored: string): boolean {
+  if (stored.startsWith("scrypt$")) {
+    const [, salt, hash] = stored.split("$");
+    if (!salt || !hash) return false;
+    return safeEqual(scryptSync(password, salt, 64), Buffer.from(hash, "hex"));
+  }
+  const [salt, hash] = stored.split(":"); // legacy format
   if (!salt || !hash) return false;
-  const computed = createHmac("sha256", salt).update(password).digest("hex");
-  return timingSafeEqual(Buffer.from(computed), Buffer.from(hash));
+  return safeEqual(Buffer.from(createHmac("sha256", salt).update(password).digest("hex")), Buffer.from(hash));
 }
 
-/**
- * Get the current admin password hash.
- * First checks Firestore (for runtime-updatable password), then falls back to env var.
- */
-export async function getAdminPasswordHash(): Promise<string | null> {
+// null = no password saved in Firestore yet (use ADMIN_PASSWORD); "error" = couldn't read it.
+async function readStoredHash(): Promise<string | null | "error"> {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) return null;
   try {
     const doc = await adminDb().collection("settings").doc("admin").get();
-    if (doc.exists && doc.data()?.passwordHash) {
-      return doc.data()!.passwordHash as string;
-    }
+    const hash = doc.exists ? doc.data()?.passwordHash : null;
+    return typeof hash === "string" && hash ? hash : null;
   } catch {
-    // Firestore not available or no settings doc
+    return "error";
   }
-  // Fallback to env var (hashed at build time)
-  const envPassword = process.env.ADMIN_PASSWORD || "";
-  if (!envPassword) return null;
-  // Hash the env password the same way for consistent comparison
-  return hashPassword(envPassword);
+}
+
+function envPasswordOk(input: string) {
+  const real = process.env.ADMIN_PASSWORD || "";
+  if (!real) return false;
+  // Hash both sides so the comparison is constant-time and length-independent.
+  const a = createHmac("sha256", "pw").update(input).digest();
+  const b = createHmac("sha256", "pw").update(real).digest();
+  return timingSafeEqual(a, b);
 }
 
 /**
- * Check if the provided password matches the current admin password.
+ * ASYNC: callers MUST `await` this. Forgetting to makes every password "correct",
+ * because a Promise is always truthy.
  */
-export async function passwordOk(input: string): Promise<boolean> {
-  const storedHash = await getAdminPasswordHash();
-  if (!storedHash) return false;
-  return verifyPassword(input, storedHash);
+export async function passwordOk(input: unknown): Promise<boolean> {
+  if (typeof input !== "string" || input.length === 0) return false;
+  const stored = await readStoredHash();
+  if (stored === "error") return false; // can't verify, so deny rather than guess
+  return stored ? verifyPassword(input, stored) : envPasswordOk(input);
 }
 
-/**
- * Update the admin password in Firestore.
- */
 export async function setAdminPassword(newPassword: string): Promise<void> {
-  const hash = hashPassword(newPassword);
   await adminDb().collection("settings").doc("admin").set({
-    passwordHash: hash,
+    passwordHash: hashPassword(newPassword),
     updatedAtMs: Date.now(),
   });
 }

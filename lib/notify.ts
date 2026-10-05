@@ -1,8 +1,9 @@
 import nodemailer from "nodemailer";
 import { property, SITE_URL } from "./property";
-import { generateOwnerNotificationWhatsApp } from "./whatsapp";
+import { bookingRef } from "./ref";
 
 type Alert = {
+  bookingId: string;
   guestName: string;
   guestPhone: string;
   checkIn: string;
@@ -16,8 +17,9 @@ type Alert = {
 
 const kes = (n: number) => `KES ${Number(n).toLocaleString("en-US")}`;
 
-// Free alert via the owner's Gmail (use an App Password, not the real password).
-// If the env vars are missing this silently does nothing, so bookings never break.
+export const emailConfigured = () => !!(process.env.ALERT_EMAIL_USER && process.env.ALERT_EMAIL_APP_PASSWORD);
+
+// Free email alert to the owner via Gmail (use an App Password, not the real password).
 export async function sendBookingAlert(b: Alert) {
   const user = process.env.ALERT_EMAIL_USER;
   const pass = process.env.ALERT_EMAIL_APP_PASSWORD;
@@ -31,8 +33,9 @@ export async function sendBookingAlert(b: Alert) {
     socketTimeout: 8000,
   });
 
+  const ref = bookingRef(b.bookingId);
   const text = [
-    `New paid booking at ${property.name}`,
+    `New paid booking ${ref} at ${property.name}`,
     "",
     `Guest: ${b.guestName}`,
     `Phone: +${b.guestPhone}`,
@@ -51,17 +54,7 @@ export async function sendBookingAlert(b: Alert) {
   await transporter.sendMail({
     from: `"${property.name}" <${user}>`,
     to,
-    subject: `New booking: ${b.guestName}, ${b.checkIn} to ${b.checkOut}`,
+    subject: `New booking ${ref}: ${b.guestName}, ${b.checkIn} to ${b.checkOut}`,
     text,
-  });
-}
-
-/**
- * Get the owner notification WhatsApp message (for sending via WhatsApp Business API or manual copy).
- */
-export function getOwnerNotificationWhatsApp(b: Alert) {
-  return generateOwnerNotificationWhatsApp({
-    ...b,
-    bookingId: "", // Will be filled in by caller if needed
   });
 }

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { isAdmin } from "@/lib/adminAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { Block, Booking } from "@/lib/types";
-import { property } from "@/lib/property";
+import { property, SITE_URL } from "@/lib/property";
+import { paymentsConfigured } from "@/lib/payments";
+import { smsConfigured } from "@/lib/sms";
+import { emailConfigured } from "@/lib/notify";
+import { importUrls } from "@/lib/ical";
 import { COMMISSION_RATE } from "@/lib/pricing";
 import AdminDashboard from "@/components/AdminDashboard";
 
@@ -47,5 +51,26 @@ export default async function AdminPage({ searchParams }: { searchParams: { e?: 
   const bookings = bk.docs.map((d) => ({ id: d.id, ...d.data() })) as Booking[];
   const blocks = bl.docs.map((d: typeof bl.docs[0]) => ({ id: d.id, ...d.data() })) as Block[];
 
-  return <AdminDashboard bookings={bookings} blocks={blocks} propertyName={property.name} propertyWhatsApp={property.whatsappNumber} commissionRate={COMMISSION_RATE} />;
+  const token = process.env.ICAL_EXPORT_TOKEN;
+  const health = {
+    payments: paymentsConfigured(),
+    paymentsLive: process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === "true",
+    sms: smsConfigured(),
+    smsSandbox: process.env.AT_USERNAME === "sandbox",
+    email: emailConfigured(),
+    icalExport: !!token,
+    icalImports: importUrls().length,
+  };
+
+  return (
+    <AdminDashboard
+      bookings={bookings}
+      blocks={blocks}
+      propertyName={property.name}
+      propertyWhatsApp={property.whatsappNumber}
+      commissionRate={COMMISSION_RATE}
+      health={health}
+      icalUrl={token ? `${SITE_URL}/api/calendar.ics?token=${token}` : null}
+    />
+  );
 }

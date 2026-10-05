@@ -4,6 +4,12 @@ export interface GalleryImage {
   label: string;
 }
 
+export interface Review {
+  quote: string;
+  name: string;
+  role?: string; // e.g. "Business traveller"
+}
+
 export interface HostProfile {
   id: string;
   slug: string;
@@ -20,7 +26,9 @@ export interface HostProfile {
     latitude: number;
     longitude: number;
   };
-  mapEmbedUrl: string; // Google Maps "Embed a map" src, specific to this property
+  mapEmbedUrl?: string; // optional: a Google Maps "Embed a map" src. If empty, the map is built from the address.
+  reviews?: Review[]; // real guest reviews. If empty, the Reviews section is hidden.
+  policies?: { title: string; text: string }[]; // optional house rules / cancellation terms. Hidden if empty.
   nightlyRate: {
     weekday: number;
     weekend: number;
@@ -54,6 +62,9 @@ export interface Booking {
   updatedAtMs: number;
   paidAtMs?: number;
   cancelledAtMs?: number;
+  source?: "web" | "manual";
+  failReason?: string | null;
+  notify?: { guestSms?: string; ownerSms?: string; ownerEmail?: string };
   // Added after successful payment
   whatsappConfirmationMessage?: string | null;
   ownerNotificationMessage?: string | null;

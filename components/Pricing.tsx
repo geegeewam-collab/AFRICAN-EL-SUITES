@@ -1,27 +1,20 @@
-"use client";
-
-import { Check, MessageCircle, Calculator, Star } from "lucide-react";
+import { Check, MessageCircle, Calculator } from "lucide-react";
 import { HostProfile } from "@/lib/types";
 import { quote, PRICING_CONFIG } from "@/lib/pricing";
+import { addDays, parse, todayNairobi } from "@/lib/dates";
 
 interface PricingProps {
   host: HostProfile;
 }
 
 export default function Pricing({ host }: PricingProps) {
-  // Sample dates for demonstration (next Friday to Sunday)
+  // Example stay: the coming Friday to Sunday (computed in Nairobi time; the page refreshes hourly)
   const getSampleDates = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
-    const friday = new Date(today);
-    friday.setDate(today.getDate() + daysUntilFriday);
-    const sunday = new Date(friday);
-    sunday.setDate(friday.getDate() + 2);
-    return {
-      checkIn: friday.toISOString().slice(0, 10),
-      checkOut: sunday.toISOString().slice(0, 10),
-    };
+    const today = todayNairobi();
+    const dow = new Date(parse(today)).getUTCDay();
+    const toFriday = (5 - dow + 7) % 7 || 7;
+    const checkIn = addDays(today, toFriday);
+    return { checkIn, checkOut: addDays(checkIn, 2) };
   };
 
   const sampleDates = getSampleDates();
@@ -96,19 +89,21 @@ export default function Pricing({ host }: PricingProps) {
               </ul>
 
               <a
-                href={waLink(`Hi, I'd like to book ${host.name} at the ${plan.name.toLowerCase()} rate (KES ${plan.rate.toLocaleString()}/night).`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 text-sm font-medium rounded-sm transition-all duration-200 hover:opacity-90 relative overflow-hidden"
+                href="#book"
+                className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium rounded-sm transition-opacity hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
               >
-                <MessageCircle size={15} />
-                Book on WhatsApp
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
+                Check dates &amp; book
               </a>
             </div>
           ))}
         </div>
+        <p className="text-center text-sm -mt-10 mb-16" style={{ color: "#5B564B" }}>
+          Questions first?{" "}
+          <a href={waLink(`Hi! I have a question about ${host.name}.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2" style={{ color: "#8F7143" }}>
+            <MessageCircle size={13} /> Ask us on WhatsApp
+          </a>
+        </p>
 
         {/* Price Breakdown Example */}
         {sampleQuote && (
@@ -121,14 +116,14 @@ export default function Pricing({ host }: PricingProps) {
                 <Calculator size={16} style={{ color: "#D4B483" }} />
                 <span className="eyebrow">Example Stay Breakdown</span>
               </div>
-              <p className="text-sm text-stone mb-6 relative">Sample stay: <strong className="text-white">{formatDate(sampleDates.checkIn)} – {formatDate(sampleDates.checkOut)}</strong> ({sampleQuote.nights} nights)</p>
+              <p className="text-sm text-stone mb-6 relative">Sample stay: <strong className="text-white">{formatDate(sampleDates.checkIn)} – {formatDate(sampleDates.checkOut)}</strong> ({sampleQuote.nights} night{sampleQuote.nights > 1 ? "s" : ""})</p>
 
               <div className="space-y-3 relative">
                 {sampleQuote.weekdayNights > 0 && (
                   <div className="flex items-center justify-between text-sm p-3 rounded-sm transition-colors" style={{ background: "rgba(212,180,131,0.08)", border: "1px solid rgba(212,180,131,0.15)" }}>
                     <div className="flex items-center gap-3 text-stone">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(212,180,131,0.2)" }}>
-                        <span className="text-[10px] font-medium" style={{ color: "#D4B483" }}>Mo–Th</span>
+                        <span className="text-[10px] font-medium" style={{ color: "#D4B483" }}>Su–Th</span>
                       </div>
                       <span>{sampleQuote.weekdayNights} night{sampleQuote.weekdayNights > 1 ? "s" : ""} × KES {PRICING_CONFIG.weekdayRate.toLocaleString()}</span>
                     </div>
@@ -146,9 +141,9 @@ export default function Pricing({ host }: PricingProps) {
                     <span className="font-medium" style={{ color: "#B8935A" }}>KES {(sampleQuote.weekendNights * PRICING_CONFIG.weekendRate).toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between border-t border-white/10 pt-3 text-white font-serif" style={{ color: "#0B1526", background: "rgba(255,255,255,0.03)", margin: "0 -1rem", padding: "1rem" }}>
-                  <span>Total ({sampleQuote.nights} night{sampleQuote.nights > 1 ? "s" : ""})</span>
-                  <span className="text-xl" style={{ color: "#D4B483" }}>KES {sampleQuote.total.toLocaleString()}</span>
+                <div className="flex items-center justify-between border-t border-white/10 pt-4 mt-1 px-1">
+                  <span className="text-white font-serif">Total ({sampleQuote.nights} night{sampleQuote.nights > 1 ? "s" : ""})</span>
+                  <span className="text-xl font-serif" style={{ color: "#D4B483" }}>KES {sampleQuote.total.toLocaleString()}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -169,33 +164,6 @@ export default function Pricing({ host }: PricingProps) {
           </div>
         )}
 
-        {/* What's Included */}
-        <div className="mt-16 max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <span className="eyebrow" style={{ color: "#8F7143" }}>Included</span>
-            <h3 className="mt-2 text-2xl md:text-3xl font-serif" style={{ color: "#0B1526" }}>
-              Everything you need for a perfect stay
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: "🛏️", label: "Luxury bedding", desc: "Hotel-quality linens" },
-              { icon: "📶", label: "High-speed WiFi", desc: "Fibre broadband" },
-              { icon: "📺", label: "Smart TV", desc: "Netflix & YouTube" },
-              { icon: "🚗", label: "Secure parking", desc: "On-site & gated" },
-              { icon: "🔑", label: "Self check-in", desc: "Keyless entry" },
-              { icon: "🍳", label: "Full kitchenette", desc: "Cook your meals" },
-              { icon: "🛁", label: "Hot shower", desc: "Instant hot water" },
-              { icon: "⚡", label: "Backup power", desc: "Generator ready" },
-            ].map((item, i) => (
-              <div key={i} className="group p-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5" style={{ background: "#FFFFFF", border: "1px solid rgba(184,147,90,0.15)" }}>
-                <div className="text-3xl mb-3">{item.icon}</div>
-                <h4 className="text-sm font-medium mb-1" style={{ color: "#0B1526" }}>{item.label}</h4>
-                <p className="text-xs" style={{ color: "#8C8577" }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );

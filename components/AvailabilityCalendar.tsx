@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { Range, isTaken, parse, rangeFree, todayNairobi, fmt, addDays } from "@/lib/dates";
 
@@ -40,12 +40,20 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
 
   const shift = (n: number) => setMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
   const firstMonth = today.slice(0, 7);
+  const addMonths = (ym: string, n: number) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + n, 1)).toISOString().slice(0, 7);
   const lastMonth = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 + 11, 1)).toISOString().slice(0, 7);
 
   const hint = !checkIn ? "Select check-in" : pickingOut ? "Select check-out" : "Click to change";
 
   // Show 2 months side by side on desktop
-  const showTwoMonths = typeof window !== "undefined" && window.innerWidth >= 768;
+  const [showTwoMonths, setShowTwoMonths] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setShowTwoMonths(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const renderMonth = (offset: number) => {
     const targetDate = new Date(Date.UTC(y, m - 1 + offset, 1));
@@ -57,20 +65,22 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
     const tDays = Array.from({ length: tDim }, (_, i) => `${tMonthStr}-${String(i + 1).padStart(2, "0")}`);
 
     return (
-      <div key={tMonthStr} className="min-w-0">
-        <div className="text-center mb-2 text-white/50 text-xs uppercase tracking-wider">
-          {MONTHS[tm - 1]} {ty}
-        </div>
+      <div key={tMonthStr} className="min-w-0 flex-1">
+        {showTwoMonths && (
+          <div className="text-center mb-2 text-white/50 text-xs uppercase tracking-wider">
+            {MONTHS[tm - 1]} {ty}
+          </div>
+        )}
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {DOW.map((d, i) => (
-            <div key={i} className="size-10 flex items-center justify-center text-white/30 text-[9px] uppercase font-medium">
+            <div key={i} className="h-8 flex items-center justify-center text-white/30 text-[10px] uppercase font-medium">
               {d}
             </div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-0.5">
           {Array.from({ length: tLead }, (_, i) => (
-            <span key={`e${i}`} className="h-9" />
+            <span key={`e${i}`} className="h-10" />
           ))}
           {tDays.map((d) => {
             const isEdge = d === checkIn || d === checkOut;
@@ -79,7 +89,7 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
             const isHovered = hoverDate === d;
             const weekend = isWeekend(d);
 
-            let cls = "h-9 text-sm rounded-sm transition-all duration-150 relative ";
+            let cls = "h-10 text-sm rounded-sm transition-all duration-150 relative ";
             if (isEdge) {
               cls += "bg-[#B8935A] text-[#0B1526] font-medium shadow-md z-10";
             } else if (inRange) {
@@ -88,8 +98,8 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
               cls += "text-white hover:bg-white/10";
               if (weekend) cls += " font-medium";
             } else {
-              cls += "text-white/15 cursor-not-allowed";
-              if (d >= today && isTaken(d, ranges)) cls += " relative";
+              cls += "cursor-not-allowed ";
+              cls += d >= today && isTaken(d, ranges) ? "text-white/30 line-through decoration-white/40" : "text-white/15";
             }
             if (isHovered && ok && !isEdge) cls += " bg-white/5";
 
@@ -110,9 +120,6 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
                 {weekend && ok && !isEdge && !inRange && (
                   <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#B8935A]/50" aria-hidden="true" />
                 )}
-                {d >= today && isTaken(d, ranges) && !ok && (
-                  <span className="absolute inset-0 border-t-2 border-white/20 -rotate-45" aria-hidden="true" />
-                )}
               </button>
             );
           })}
@@ -126,8 +133,8 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
       <div className="flex items-center justify-between mb-3 md:mb-4">
         <button
           type="button"
-          onClick={() => shift(-1)}
-          disabled={month <= firstMonth && !showTwoMonths}
+          onClick={() => shift(showTwoMonths ? -2 : -1)}
+          disabled={month <= firstMonth}
           aria-label="Previous month"
           className="p-2 text-white/60 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-white/5"
         >
@@ -147,7 +154,7 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
         <button
           type="button"
           onClick={() => shift(showTwoMonths ? 2 : 1)}
-          disabled={month >= lastMonth}
+          disabled={month >= (showTwoMonths ? addMonths(lastMonth, -1) : lastMonth)}
           aria-label="Next month"
           className="p-2 text-white/60 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors rounded-lg hover:bg-white/5"
         >
@@ -190,9 +197,7 @@ export default function AvailabilityCalendar({ ranges, checkIn, checkOut, onChan
             <span>Weekend rate</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm border border-white/20 relative">
-              <span className="absolute inset-0 border-t border-white/20 -rotate-45" />
-            </span>
+            <span className="text-white/40 line-through decoration-white/50 text-xs leading-none">12</span>
             <span>Booked</span>
           </div>
         </div>

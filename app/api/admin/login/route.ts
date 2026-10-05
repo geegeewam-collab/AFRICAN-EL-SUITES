@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return res;
   }
 
-  if (!passwordOk(String(form.get("password") ?? ""))) {
+  if (!(await passwordOk(form.get("password")))) {
     await new Promise((r) => setTimeout(r, 1000)); // slow down guessing
     return back("/admin?e=1");
   }

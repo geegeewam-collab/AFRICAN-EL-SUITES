@@ -1,38 +1,57 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, CalendarCheck, ClipboardCheck, Smartphone, Users, CreditCard, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowRight, CalendarCheck, CheckCircle2, ClipboardCheck, CreditCard, Loader2, MessageCircle, Smartphone, Users } from "lucide-react";
 import { HostProfile } from "@/lib/types";
-import { quote } from "@/lib/pricing";
+import { PRICING_CONFIG, quote } from "@/lib/pricing";
 import { Range } from "@/lib/dates";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 
-interface SpaceBookingProps {
-  host: HostProfile;
-}
+// Online payment is switched on with NEXT_PUBLIC_PAYMENTS_ENABLED=true (set it once M-Pesa is live).
+// Until then the same form sends a booking REQUEST to WhatsApp, so the site works from day one.
+const PAYMENTS_ON = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === "true";
+const SMS_ON = process.env.NEXT_PUBLIC_SMS_ENABLED === "true";
 
-const steps = [
-  { n: "01", icon: CalendarCheck, title: "Choose dates", desc: "Select your check-in and check-out dates on the calendar." },
-  { n: "02", icon: ClipboardCheck, title: "Pay deposit", desc: "Secure your stay with a 50% deposit via M-Pesa STK Push." },
-  { n: "03", icon: Smartphone, title: "Get confirmed", desc: "Receive house rules and access details via WhatsApp." },
-];
+type Phase = "form" | "sending" | "waiting" | "paid" | "unpaid" | "timeout";
+type Paid = { ref: string; deposit: number; balance: number; checkIn: string; checkOut: string };
 
-type BookingState = "idle" | "loading" | "success" | "error";
+const kes = (n: number) => `KES ${Number(n).toLocaleString("en-US")}`;
+const nice = (s: string) => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const PHONE_OK = /^(?:\+?254|0)[17]\d{8}$/;
+const gold = { background: "linear-gradient(135deg, #B8935A 0%, #D4B483 50%, #8F7143 100%)", color: "#0B1526" };
+const muted = { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" };
+const input =
+  "w-full bg-white/5 border border-white/10 rounded-sm px-3.5 py-3.5 text-white text-[15px] placeholder:text-white/30 focus:outline-none focus:border-[#B8935A] focus:ring-1 focus:ring-[#B8935A] transition-all disabled:opacity-60";
 
-export default function SpaceBooking({ host }: SpaceBookingProps) {
-  const [bookingState, setBookingState] = useState<BookingState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [bookingData, setBookingData] = useState<{
-    bookingId: string;
-    deposit: number;
-    totalAmount: number;
-    balanceAmount: number;
-    weekdayNights: number;
-    weekendNights: number;
-  } | null>(null);
+export default function SpaceBooking({ host }: { host: HostProfile }) {
+  const deposit = Math.round(PRICING_CONFIG.depositRate * 100);
+  const steps = PAYMENTS_ON
+    ? [
+        { n: "01", icon: CalendarCheck, title: "Choose dates", desc: "Pick your check-in and check-out on the calendar." },
+        { n: "02", icon: ClipboardCheck, title: "Pay deposit", desc: `Secure your stay with a ${deposit}% deposit via M-Pesa.` },
+        { n: "03", icon: Smartphone, title: "Get confirmed", desc: "Your booking is confirmed instantly, with a reference number." },
+      ]
+    : [
+        { n: "01", icon: CalendarCheck, title: "Choose dates", desc: "Pick your check-in and check-out on the calendar." },
+        { n: "02", icon: MessageCircle, title: "Send your request", desc: "One tap opens WhatsApp with your dates and price filled in." },
+        { n: "03", icon: Smartphone, title: "Get confirmed", desc: `We confirm availability and share how to pay the ${deposit}% deposit.` },
+      ];
+
+  const [phase, setPhase] = useState<Phase>("form");
+  const [error, setError] = useState<string | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [paid, setPaid] = useState<Paid | null>(null);
   const [ranges, setRanges] = useState<Range[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [dates, setDates] = useState({ checkin: "", checkout: "" });
+  const [guests, setGuests] = useState("2");
+  const [info, setInfo] = useState({ name: "", phone: "" });
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // keep the status screen (waiting / booked / failed) in view when the card changes height
+    if (phase !== "form" && phase !== "sending") cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [phase]);
 
   const loadRanges = useCallback(() => {
     fetch("/api/availability", { cache: "no-store" })
@@ -42,450 +61,389 @@ export default function SpaceBooking({ host }: SpaceBookingProps) {
   }, []);
   useEffect(() => {
     loadRanges();
-    setMounted(true);
   }, [loadRanges]);
 
-  const [dates, setDates] = useState({ checkin: "", checkout: "" });
-  const [guests, setGuests] = useState("1");
-  const [guestInfo, setGuestInfo] = useState({ name: "", phone: "" });
-
-  // Read dates from sessionStorage (set by Hero section)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const heroCheckIn = sessionStorage.getItem("hero_checkin");
-      const heroCheckOut = sessionStorage.getItem("hero_checkout");
-      const heroGuests = sessionStorage.getItem("hero_guests");
-
-      if (heroCheckIn && heroCheckOut) {
-        setDates({ checkin: heroCheckIn, checkout: heroCheckOut });
-        sessionStorage.removeItem("hero_checkin");
-        sessionStorage.removeItem("hero_checkout");
-      }
-      if (heroGuests) {
-        setGuests(heroGuests);
-        sessionStorage.removeItem("hero_guests");
-      }
-    }
-  }, []);
-
   const q = quote(dates.checkin, dates.checkout);
+  const haveDates = !!dates.checkin && !!dates.checkout;
+  const phoneClean = info.phone.replace(/[\s-]/g, "");
+  const phoneValid = PHONE_OK.test(phoneClean);
+  const nameValid = info.name.trim().length >= 2;
+  const busy = phase === "sending";
 
-  const waLink = (message: string) =>
-    `https://wa.me/${host.whatsappNumber}?text=${encodeURIComponent(message)}`;
+  // After the M-Pesa prompt: check every 3 seconds (up to ~2.5 minutes) whether the payment landed.
+  useEffect(() => {
+    if (phase !== "waiting" || !bookingId) return;
+    let stopped = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      if (stopped) return;
+      tries++;
+      try {
+        const r = await fetch(`/api/booking-status?id=${bookingId}`, { cache: "no-store" });
+        if (r.ok) {
+          const j = await r.json();
+          if (j.status === "paid") {
+            setPaid({ ref: j.ref, deposit: j.depositAmount, balance: j.balanceAmount, checkIn: j.checkIn, checkOut: j.checkOut });
+            setPhase("paid");
+            loadRanges();
+            return;
+          }
+          if (j.status === "failed" || j.status === "cancelled") {
+            setPhase("unpaid");
+            loadRanges();
+            return;
+          }
+        }
+      } catch {
+        /* keep trying */
+      }
+      if (tries >= 50) return setPhase("timeout");
+      timer = setTimeout(tick, 3000);
+    };
+    timer = setTimeout(tick, 3000);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [phase, bookingId, loadRanges]);
 
-  const confirmLink = waLink(`Hi! I've just paid my M-Pesa deposit for my stay at ${host.name}.
-
-👤 Name: ${guestInfo.name}
-📅 Dates: ${dates.checkin} to ${dates.checkout}
-👥 Guests: ${guests}
-
-Please confirm and send me the house rules!`);
-
-  const startBooking = async () => {
-    if (!guestInfo.name?.trim() || !guestInfo.phone?.trim()) {
-      setErrorMessage("Please enter your name and phone number to continue.");
-      setBookingState("error");
-      return;
-    }
-
-    if (!q) {
-      setErrorMessage("Please choose valid check-in and check-out dates.");
-      setBookingState("error");
-      return;
-    }
-
-    setBookingState("loading");
-    setErrorMessage(null);
-
+  const startPayment = async () => {
+    setError(null);
+    if (!q) return setError("Please choose your check-in and check-out dates.");
+    if (!nameValid) return setError("Please enter your full name.");
+    if (!phoneValid) return setError("Enter the Safaricom number to pay with, e.g. 0712 345 678.");
+    setPhase("sending");
     try {
-      const response = await fetch("/api/pay", {
+      const res = await fetch("/api/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestName: guestInfo.name.trim(),
-          guestPhone: guestInfo.phone.trim(),
-          checkIn: dates.checkin,
-          checkOut: dates.checkout,
-          guests: parseInt(guests, 10),
-        }),
+        body: JSON.stringify({ guestName: info.name.trim(), guestPhone: phoneClean, checkIn: dates.checkin, checkOut: dates.checkout, guests: parseInt(guests, 10) }),
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setBookingData({
-          bookingId: result.bookingId,
-          deposit: result.deposit,
-          totalAmount: q.total,
-          balanceAmount: q.balance,
-          weekdayNights: q.weekdayNights,
-          weekendNights: q.weekendNights,
-        });
-        setBookingState("success");
-      } else {
-        setErrorMessage(result.error || "Something went wrong. Please try again.");
-        setBookingState("error");
-        if (/taken/i.test(result.error ?? "")) {
-          loadRanges();
-          setDates({ checkin: "", checkout: "" });
-        }
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        setBookingId(json.bookingId);
+        setPhase("waiting");
+        return;
+      }
+      setError(json.error || "Something went wrong. Please try again.");
+      setPhase("form");
+      if (res.status === 409) {
+        loadRanges();
+        setDates({ checkin: "", checkout: "" });
       }
     } catch {
-      setErrorMessage("Unable to process booking. Please check your connection and try again.");
-      setBookingState("error");
+      setError("We couldn't reach the server. Please check your connection and try again.");
+      setPhase("form");
     }
   };
 
-  const dismissError = () => {
-    setErrorMessage(null);
-    setBookingState("idle");
+  const reset = () => {
+    setPhase("form");
+    setError(null);
+    setBookingId(null);
+    setPaid(null);
+    setDates({ checkin: "", checkout: "" });
+    loadRanges();
   };
 
-  const retryBooking = () => {
-    setBookingState("idle");
-    setErrorMessage(null);
-  };
+  const waNumber = host.whatsappNumber;
+  const requestLink = q
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(
+        [
+          `Hi! I'd like to book ${host.name}.`,
+          "",
+          `📅 ${nice(dates.checkin)} to ${nice(dates.checkout)} (${q.nights} night${q.nights > 1 ? "s" : ""})`,
+          `👥 ${guests} guest${guests === "1" ? "" : "s"}`,
+          `💰 Total ${kes(q.total)} (deposit ${kes(q.deposit)})`,
+          info.name.trim() ? `👤 ${info.name.trim()}` : "",
+          "",
+          "Is it available? How do I pay the deposit?",
+        ]
+          .filter((l, i, a) => l !== "" || (a[i - 1] !== "" && i !== a.length - 1))
+          .join("\n")
+      )}`
+    : undefined;
+  const helpLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi! I need help with my booking at ${host.name}.${bookingId ? ` (ref ${bookingId.slice(-4).toUpperCase()})` : ""}`)}`;
 
-  if (!mounted) {
-    return (
-      <section id="book" className="section-pad" style={{ backgroundColor: "#F6F1E6" }}>
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-16 items-start">
-          <div className="animate-in fade-in slide-in-from-left duration-1000">
-            <span className="eyebrow" style={{ color: "#8F7143" }}>The Space</span>
-            <h2 className="mt-3 text-3xl md:text-4xl font-serif mb-5 leading-tight" style={{ color: "#0B1526" }}>
-              A sanctuary of <br /> stillness and style.
-            </h2>
-            <p className="max-w-md leading-relaxed mb-6" style={{ color: "#5B564B" }}>{host.description}</p>
-            <div className="grid grid-cols-2 gap-2.5 mt-8">
-              <div className="relative rounded-sm overflow-hidden row-span-2" style={{ aspectRatio: "3/4" }}>
-                <Image src={host.gallery[0].src} alt={host.gallery[0].alt} fill className="object-cover" sizes="30vw" />
-              </div>
-              <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "4/3" }}>
-                <Image src={host.gallery[1].src} alt={host.gallery[1].alt} fill className="object-cover" sizes="30vw" />
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                  <Image src={host.gallery[2].src} alt={host.gallery[2].alt} fill className="object-cover" sizes="15vw" />
-                </div>
-                <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                  <Image src={host.gallery[3].src} alt={host.gallery[3].alt} fill className="object-cover" sizes="15vw" />
-                </div>
-              </div>
-            </div>
+  const collage = (
+    <div className="grid grid-cols-2 gap-2.5 mt-8">
+      <div className="relative rounded-sm overflow-hidden row-span-2" style={{ aspectRatio: "3/4" }}>
+        <Image src={host.gallery[0].src} alt={host.gallery[0].alt} fill className="object-cover" sizes="(min-width:1024px) 25vw, 45vw" />
+      </div>
+      <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "4/3" }}>
+        <Image src={host.gallery[1].src} alt={host.gallery[1].alt} fill className="object-cover" sizes="(min-width:1024px) 25vw, 45vw" />
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {[2, 3].map((i) => (
+          <div key={i} className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
+            <Image src={host.gallery[i].src} alt={host.gallery[i].alt} fill className="object-cover" sizes="(min-width:1024px) 12vw, 22vw" />
           </div>
-          <div className="rounded-sm p-7 md:p-9 shadow-xl" style={{ backgroundColor: "#0B1526", border: "1px solid rgba(184,147,90,0.2)" }}>
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="w-8 h-8 text-[#B8935A] animate-spin" />
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
+        ))}
+      </div>
+    </div>
+  );
+
+  const showForm = phase === "form" || phase === "sending";
 
   return (
     <section id="book" className="section-pad" style={{ backgroundColor: "#F6F1E6" }}>
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-16 items-start">
-        {/* Left: Gallery + Description */}
-        <div className="animate-in fade-in slide-in-from-left duration-1000">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1fr] gap-12 lg:gap-16 items-start">
+        {/* Left: story + photos */}
+        <div className="lg:sticky lg:top-28">
           <span className="eyebrow" style={{ color: "#8F7143" }}>The Space</span>
           <h2 className="mt-3 text-3xl md:text-4xl font-serif mb-5 leading-tight" style={{ color: "#0B1526" }}>
-            A sanctuary of <br /> stillness and style.
+            A sanctuary of <br className="hidden sm:block" /> stillness and style.
           </h2>
           <p className="max-w-md leading-relaxed mb-6" style={{ color: "#5B564B" }}>{host.description}</p>
           <a href="#gallery" className="inline-flex items-center gap-2 text-sm font-medium tracking-wide" style={{ color: "#8F7143" }}>
             EXPLORE THE AESTHETIC <ArrowRight size={15} />
           </a>
-
-          <div className="grid grid-cols-2 gap-2.5 mt-8">
-            <div className="relative rounded-sm overflow-hidden row-span-2" style={{ aspectRatio: "3/4" }}>
-              <Image src={host.gallery[0].src} alt={host.gallery[0].alt} fill className="object-cover" sizes="30vw" />
-            </div>
-            <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "4/3" }}>
-              <Image src={host.gallery[1].src} alt={host.gallery[1].alt} fill className="object-cover" sizes="30vw" />
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                <Image src={host.gallery[2].src} alt={host.gallery[2].alt} fill className="object-cover" sizes="15vw" />
-              </div>
-              <div className="relative rounded-sm overflow-hidden" style={{ aspectRatio: "1/1" }}>
-                <Image src={host.gallery[3].src} alt={host.gallery[3].alt} fill className="object-cover" sizes="15vw" />
-              </div>
-            </div>
-          </div>
+          {collage}
         </div>
 
-        {/* Right: Booking Form */}
-        <div className="relative">
-          <div className="rounded-sm shadow-xl" style={{ backgroundColor: "#0B1526", border: "1px solid rgba(184,147,90,0.2)" }}>
-            <div className="p-7 md:p-9">
-              {/* Header */}
-              <div className="mb-8">
-                <span className="eyebrow">Direct Booking</span>
-                <h3 className="mt-3 text-2xl md:text-3xl font-serif text-white mb-2 leading-tight">
-                  Seamless. Secure. <br /> Exclusively Yours.
-                </h3>
-                <p className="text-white/45 text-sm">Book direct for the best rate — no platform fees.</p>
-              </div>
+        {/* Right: booking card */}
+        <div ref={cardRef} className="rounded-sm shadow-xl" style={{ backgroundColor: "#0B1526", border: "1px solid rgba(184,147,90,0.2)" }}>
+          <div className="p-6 sm:p-8 md:p-9">
+            <div className="mb-7">
+              <span className="eyebrow">{PAYMENTS_ON ? "Direct Booking" : "Book Direct"}</span>
+              <h3 className="mt-3 text-2xl md:text-3xl font-serif text-white mb-2 leading-tight">Book your stay</h3>
+              <p className="text-white/50 text-sm">Direct is always the best rate. No platform fees.</p>
+            </div>
 
-              {/* Steps */}
-              <div className="flex flex-col gap-5 mb-8">
-                {steps.map((step) => {
-                  const Icon = step.icon;
-                  const isActive = bookingState === "loading" && step.n === "02";
-                  const isDone = bookingState === "success" && (step.n === "01" || step.n === "02");
+            {showForm && (
+              <ol className="flex flex-col gap-4 mb-8">
+                {steps.map((s) => {
+                  const Icon = s.icon;
                   return (
-                    <div key={step.n} className={`flex gap-4 items-start transition-colors ${isActive ? "animate-pulse" : ""}`}>
-                      <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-serif transition-all ${
-                          isDone ? "bg-[#B8935A] text-[#0B1526]" :
-                          isActive ? "bg-[#B8935A]/30 text-[#D4B483] border-[#B8935A]/50" :
-                          "bg-white/5 border-white/10 text-white/50"
-                        }`}
-                        style={{
-                          border: "1px solid",
-                          borderColor: isDone ? "#B8935A" : isActive ? "rgba(184,147,90,0.5)" : "rgba(255,255,255,0.1)"
-                        }}
-                      >
-                        {isDone ? <CheckCircle2 size={16} /> : step.n}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-medium mb-0.5 ${isActive ? "text-[#D4B483]" : isDone ? "text-[#D4B483]" : "text-white"}`}>
-                          {step.title}
-                        </p>
-                        <p className="text-xs leading-relaxed" style={{ color: isActive ? "#D4B483" : isDone ? "#D4B483" : "rgba(255,255,255,0.4)" }}>
-                          {step.desc}
-                        </p>
-                      </div>
-                    </div>
+                    <li key={s.n} className="flex gap-4 items-start">
+                      <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border border-white/10 bg-white/5 text-white/60">
+                        <Icon size={15} />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-medium text-white mb-0.5">{s.title}</span>
+                        <span className="block text-xs leading-relaxed text-white/45">{s.desc}</span>
+                      </span>
+                    </li>
                   );
                 })}
+              </ol>
+            )}
+
+            {/* ---------- waiting for M-Pesa ---------- */}
+            {phase === "waiting" && (
+              <div className="text-center py-6" role="status" aria-live="polite">
+                <Loader2 className="mx-auto mb-5 animate-spin" size={34} style={{ color: "#D4B483" }} />
+                <h4 className="text-white font-serif text-2xl mb-2">Check your phone</h4>
+                <p className="text-white/60 text-sm leading-relaxed max-w-sm mx-auto">
+                  Enter your M-Pesa PIN to pay the <strong className="text-white">{q ? kes(q.deposit) : "deposit"}</strong> deposit. This page updates by itself the moment the payment goes through.
+                </p>
+                <button onClick={reset} className="mt-6 text-white/40 hover:text-white text-xs underline">Cancel and start again</button>
               </div>
+            )}
 
-              {/* Error State */}
-              {bookingState === "error" && errorMessage && (
-                <div className="mb-6 p-4 rounded-sm flex items-start gap-3 animate-in fade-in" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                  <AlertCircle size={20} style={{ color: "#EF4444", flexShrink: 0, marginTop: 1 }} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-red-300">Unable to proceed</p>
-                    <p className="text-white/80 text-sm mt-0.5">{errorMessage}</p>
-                  </div>
-                  <button onClick={dismissError} className="text-white/50 hover:text-white text-xl leading-none p-1" aria-label="Dismiss error">×</button>
+            {/* ---------- paid ---------- */}
+            {phase === "paid" && paid && (
+              <div className="text-center py-4 animate-fade-up" role="status" aria-live="polite">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "rgba(184,147,90,0.15)", border: "1px solid rgba(184,147,90,0.35)" }}>
+                  <CheckCircle2 size={30} style={{ color: "#D4B483" }} />
                 </div>
-              )}
-
-              {/* Success State */}
-              {bookingState === "success" && bookingData && (
-                <div className="text-center py-8 animate-in fade-in zoom-in duration-300">
-                  <div className="w-16 h-16 rounded-full bg-[#B8935A]/15 border border-[#B8935A]/30 flex items-center justify-center mx-auto mb-5">
-                    <CheckCircle2 size={28} style={{ color: "#D4B483" }} />
-                  </div>
-                  <h4 className="text-white font-serif text-2xl mb-2">Deposit Initiated</h4>
-                  <p className="text-white/55 text-sm leading-relaxed mb-6 max-w-sm mx-auto">
-                    We've sent an M-Pesa STK Push to your phone. Enter your PIN to pay the
-                    <strong className="text-white">KES {bookingData.deposit.toLocaleString()}</strong> deposit.
-                  </p>
-                  <a
-                    href={confirmLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 text-sm font-medium rounded-sm transition-all duration-200 hover:opacity-90 shadow-lg"
-                    style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
-                  >
-                    <Smartphone size={18} />
-                    Confirm on WhatsApp
-                  </a>
-                  <p className="mt-4 text-white/60 text-sm">
-                    Once paid, tap above to receive your house rules and access details.
-                  </p>
-                  <button
-                    onClick={() => { setBookingState("idle"); setBookingData(null); }}
-                    className="mt-6 text-white/40 hover:text-white text-sm underline"
-                  >
-                    Payment didn&apos;t come through? Try different dates
-                  </button>
+                <h4 className="text-white font-serif text-2xl mb-1">You&apos;re booked!</h4>
+                <p className="text-white/50 text-sm mb-6">Keep your reference number safe.</p>
+                <div className="rounded-sm p-5 text-left mb-6" style={{ background: "rgba(184,147,90,0.08)", border: "1px solid rgba(184,147,90,0.25)" }}>
+                  <Row label="Reference" value={paid.ref} strong />
+                  <Row label="Stay" value={`${nice(paid.checkIn)} to ${nice(paid.checkOut)}`} />
+                  <Row label="Deposit paid" value={kes(paid.deposit)} />
+                  <Row label="Balance on arrival" value={kes(paid.balance)} last />
                 </div>
-              )}
+                <p className="text-white/60 text-sm mb-5 leading-relaxed">
+                  {SMS_ON ? "A confirmation SMS is on its way to your phone. " : ""}We&apos;ll send your access details on WhatsApp. Message us any time if you need anything.
+                </p>
+                <a href={helpLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 w-full px-6 py-4 text-sm font-medium rounded-sm" style={gold}>
+                  <MessageCircle size={16} /> Message us on WhatsApp
+                </a>
+              </div>
+            )}
 
-              {/* Booking Form - only show when not in success state */}
-              {bookingState !== "success" && (
-                <>
-                  {/* Calendar */}
-                  <div className="mb-6">
-                    <AvailabilityCalendar
-                      ranges={ranges}
-                      checkIn={dates.checkin}
-                      checkOut={dates.checkout}
-                      onChange={(ci, co) => {
-                        setDates({ checkin: ci, checkout: co });
-                        if (bookingState === "error") setBookingState("idle");
-                      }}
-                    />
+            {/* ---------- payment didn't happen ---------- */}
+            {(phase === "unpaid" || phase === "timeout") && (
+              <div className="text-center py-4" role="status" aria-live="polite">
+                <AlertCircle className="mx-auto mb-4" size={34} style={{ color: "#F59E0B" }} />
+                <h4 className="text-white font-serif text-2xl mb-2">{phase === "unpaid" ? "Payment wasn't completed" : "Still waiting for payment"}</h4>
+                <p className="text-white/60 text-sm leading-relaxed max-w-sm mx-auto mb-6">
+                  {phase === "unpaid"
+                    ? "No money was taken and your dates are released. You can try again."
+                    : "We haven't received your payment yet. If you already paid, don't worry: it will show up shortly and we'll confirm your booking. Otherwise you can try again."}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button onClick={reset} className="px-7 py-3.5 text-sm font-medium rounded-sm" style={gold}>Try again</button>
+                  <a href={helpLink} target="_blank" rel="noopener noreferrer" className="px-7 py-3.5 text-sm font-medium rounded-sm border border-white/20 text-white hover:bg-white/5">Ask us on WhatsApp</a>
+                </div>
+              </div>
+            )}
+
+            {/* ---------- the form ---------- */}
+            {showForm && (
+              <>
+                {error && (
+                  <div role="alert" className="mb-5 p-4 rounded-sm flex items-start gap-3" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                    <AlertCircle size={18} className="flex-shrink-0 mt-0.5 text-red-400" />
+                    <p className="text-sm text-red-200 flex-1">{error}</p>
+                    <button onClick={() => setError(null)} className="text-white/50 hover:text-white text-xl leading-none px-1" aria-label="Dismiss">×</button>
                   </div>
+                )}
 
-                  {/* Guest Details */}
-                  <div className="space-y-4 mb-6">
-                    <label className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-widest">
-                      <Users size={12} style={{ color: "#B8935A" }} />
-                      Guest Details
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Full Name"
-                          className="w-full bg-white/5 border border-white/10 rounded-sm p-3 text-white text-sm focus:outline-none focus:border-[#B8935A] focus:ring-1 focus:ring-[#B8935A] transition-all peer"
-                          value={guestInfo.name}
-                          onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
-                          onFocus={() => bookingState === "error" && setBookingState("idle")}
-                          disabled={bookingState === "loading"}
-                          aria-label="Full name"
-                        />
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="tel"
-                          placeholder="Phone (e.g. 2547...)"
-                          className="w-full bg-white/5 border border-white/10 rounded-sm p-3 text-white text-sm focus:outline-none focus:border-[#B8935A] focus:ring-1 focus:ring-[#B8935A] transition-all peer"
-                          value={guestInfo.phone}
-                          onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
-                          onFocus={() => bookingState === "error" && setBookingState("idle")}
-                          disabled={bookingState === "loading"}
-                          aria-label="Phone number"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Guest Count */}
-                  <div className="mb-6">
-                    <label className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-widest mb-3">
-                      <Users size={12} style={{ color: "#B8935A" }} />
-                      Guests
-                    </label>
-                    <div className="flex gap-2">
-                      {["1", "2"].map((num) => (
-                        <button
-                          key={num}
-                          onClick={() => setGuests(num)}
-                          disabled={bookingState === "loading"}
-                          className={`flex-1 py-3 text-sm rounded-sm transition-all font-medium ${
-                            guests === num
-                              ? "bg-[#B8935A] text-[#0B1526] shadow-md"
-                              : "bg-white/5 text-white hover:bg-white/10 border border-white/10"
-                          }`}
-                          aria-pressed={guests === num}
-                        >
-                          {num} Guest{num !== "1" ? "s" : ""}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Price Breakdown */}
-                  {q && (
-                    <div className="mb-6 p-5 rounded-sm relative overflow-hidden animate-in slide-in-from-bottom duration-300"
-                         style={{ background: "linear-gradient(135deg, rgba(184,147,90,0.12) 0%, rgba(184,147,90,0.04) 100%)", border: "1px solid rgba(184,147,90,0.25)" }}>
-                      <div className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-widest mb-4">
-                        <span style={{ color: "#B8935A" }}>Price Breakdown</span>
-                        <span className="w-px h-4 bg-white/10 mx-2" />
-                        <span className="text-white/60 text-sm font-medium">{q.nights} night{q.nights > 1 ? "s" : ""}</span>
-                      </div>
-                      <div className="space-y-3">
-                        {q.weekdayNights > 0 && (
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2 text-white/80">
-                              <span className="w-2 h-2 rounded-full" style={{ background: "#D4B483" }} />
-                              <span>{q.weekdayNights} weekday night{q.weekdayNights > 1 ? "s" : ""}</span>
-                            </div>
-                            <span className="font-medium text-white" style={{ color: "#D4B483" }}>
-                              KES {(q.weekdayNights * host.nightlyRate.weekday).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        {q.weekendNights > 0 && (
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2 text-white/80">
-                              <span className="w-2 h-2 rounded-full" style={{ background: "#B8935A" }} />
-                              <span>{q.weekendNights} weekend night{q.weekendNights > 1 ? "s" : ""}</span>
-                            </div>
-                            <span className="font-medium text-white" style={{ color: "#D4B483" }}>
-                              KES {(q.weekendNights * host.nightlyRate.weekend).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                          <span className="text-white font-medium">Total</span>
-                          <span className="text-lg font-serif" style={{ color: "#D4B483" }}>KES {q.total.toLocaleString()}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 pt-2">
-                          <div className="p-3 rounded-sm text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                            <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Deposit (50%)</p>
-                            <p className="text-lg font-serif" style={{ color: "#D4B483" }}>KES {q.deposit.toLocaleString()}</p>
-                          </div>
-                          <div className="p-3 rounded-sm text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                            <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Balance on Arrival</p>
-                            <p className="text-lg font-serif" style={{ color: "#D4B483" }}>KES {q.balance.toLocaleString()}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CTA Button */}
-                  <button
-                    onClick={startBooking}
-                    disabled={bookingState === "loading" || !q || !guestInfo.name?.trim() || !guestInfo.phone?.trim()}
-                    className="w-full py-4 md:py-5 text-sm md:text-base font-medium rounded-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-xl flex items-center justify-center gap-3 relative overflow-hidden"
-                    style={{
-                      background: "linear-gradient(135deg, #B8935A 0%, #D4B483 50%, #8F7143 100%)",
-                      color: "#0B1526",
-                      opacity: bookingState === "loading" || !q || !guestInfo.name?.trim() || !guestInfo.phone?.trim() ? 0.5 : 1,
+                <div className="mb-6">
+                  <AvailabilityCalendar
+                    ranges={ranges}
+                    checkIn={dates.checkin}
+                    checkOut={dates.checkout}
+                    onChange={(ci, co) => {
+                      setDates({ checkin: ci, checkout: co });
+                      setError(null);
                     }}
-                    aria-busy={bookingState === "loading"}
+                  />
+                  {haveDates && !q && (
+                    <p className="mt-3 text-amber-300/90 text-xs">
+                      Online bookings are for up to {PRICING_CONFIG.maxNights} nights. For a longer stay, <a className="underline" href={helpLink} target="_blank" rel="noopener noreferrer">message us</a> and we&apos;ll arrange it.
+                    </p>
+                  )}
+                </div>
+
+                <fieldset className="mb-6" disabled={busy}>
+                  <legend className="flex items-center gap-2 text-white/45 text-[11px] uppercase tracking-widest mb-3">
+                    <Users size={12} style={{ color: "#B8935A" }} /> Your details
+                  </legend>
+                  <div className="grid gap-3">
+                    <label className="block">
+                      <span className="sr-only">Full name</span>
+                      <input type="text" autoComplete="name" placeholder="Full name" className={input} value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} />
+                    </label>
+                    <label className="block">
+                      <span className="sr-only">{PAYMENTS_ON ? "M-Pesa phone number" : "Phone number"}</span>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder={PAYMENTS_ON ? "M-Pesa number, e.g. 0712 345 678" : "Phone (optional)"}
+                        className={input}
+                        value={info.phone}
+                        onChange={(e) => setInfo({ ...info, phone: e.target.value })}
+                      />
+                    </label>
+                    {PAYMENTS_ON && info.phone && !phoneValid && <p className="text-amber-300/90 text-xs -mt-1">Use a Safaricom number like 0712 345 678.</p>}
+                  </div>
+                  <div className="flex gap-2 mt-3" role="group" aria-label="Number of guests">
+                    {["1", "2"].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setGuests(n)}
+                        aria-pressed={guests === n}
+                        className={`flex-1 py-3 text-sm rounded-sm font-medium transition-colors ${guests === n ? "bg-[#B8935A] text-[#0B1526]" : "bg-white/5 text-white border border-white/10 hover:bg-white/10"}`}
+                      >
+                        {n} guest{n === "1" ? "" : "s"}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {q && (
+                  <div className="mb-6 p-5 rounded-sm" style={{ background: "linear-gradient(135deg, rgba(184,147,90,0.12), rgba(184,147,90,0.04))", border: "1px solid rgba(184,147,90,0.25)" }}>
+                    <p className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "#B8935A" }}>
+                      Price · {q.nights} night{q.nights > 1 ? "s" : ""}
+                    </p>
+                    <div className="space-y-2.5 text-sm">
+                      {q.weekdayNights > 0 && <Line label={`${q.weekdayNights} weekday night${q.weekdayNights > 1 ? "s" : ""}`} value={kes(q.weekdayNights * PRICING_CONFIG.weekdayRate)} />}
+                      {q.weekendNights > 0 && <Line label={`${q.weekendNights} weekend night${q.weekendNights > 1 ? "s" : ""}`} value={kes(q.weekendNights * PRICING_CONFIG.weekendRate)} />}
+                      <div className="pt-3 mt-1 border-t border-white/10 flex items-center justify-between">
+                        <span className="text-white font-medium">Total</span>
+                        <span className="text-xl font-serif" style={{ color: "#D4B483" }}>{kes(q.total)}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <div className="p-3 rounded-sm text-center" style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Deposit ({deposit}%)</p>
+                        <p className="font-serif text-lg" style={{ color: "#D4B483" }}>{kes(q.deposit)}</p>
+                      </div>
+                      <div className="p-3 rounded-sm text-center" style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">On arrival</p>
+                        <p className="font-serif text-lg" style={{ color: "#D4B483" }}>{kes(q.balance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {PAYMENTS_ON ? (
+                  <button
+                    onClick={startPayment}
+                    disabled={busy || !q || !nameValid || !phoneValid}
+                    className="w-full py-4 text-[15px] font-medium rounded-sm flex items-center justify-center gap-3 transition-colors disabled:cursor-not-allowed"
+                    style={busy || (q && nameValid && phoneValid) ? gold : muted}
+                    aria-busy={busy}
                   >
-                    {bookingState === "loading" ? (
+                    {busy ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Processing Deposit...</span>
+                        <Loader2 className="w-5 h-5 animate-spin" /> Sending M-Pesa prompt…
                       </>
                     ) : (
                       <>
-                        <CreditCard size={18} />
-                        <span>Confirm & Pay Deposit</span>
+                        <CreditCard size={18} /> {q ? `Pay ${kes(q.deposit)} deposit` : "Confirm & pay deposit"}
                       </>
                     )}
-                    {/* Shimmer effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" style={{ opacity: bookingState === "loading" ? 0 : 1 }} />
                   </button>
+                ) : (
+                  <a
+                    href={requestLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!q}
+                    onClick={(e) => {
+                      if (!q) {
+                        e.preventDefault();
+                        setError("Please choose your check-in and check-out dates first.");
+                      }
+                    }}
+                    className="w-full py-4 text-[15px] font-medium rounded-sm flex items-center justify-center gap-3 transition-colors"
+                    style={q ? gold : muted}
+                  >
+                    <MessageCircle size={18} /> Request these dates on WhatsApp
+                  </a>
+                )}
 
-                  <p className="text-white/30 text-xs text-center mt-4">
-                    {q
-                      ? `KES ${q.total.toLocaleString()} for ${q.nights} night${q.nights > 1 ? "s" : ""} · deposit KES ${q.deposit.toLocaleString()} secures your stay`
-                      : "Select dates to see your total and deposit"}
-                  </p>
-
-                  {/* Trust indicators */}
-                  <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-4 text-xs text-white/40">
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 size={12} style={{ color: "#B8935A" }} />
-                      <span>Secure M-Pesa payment</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 size={12} style={{ color: "#B8935A" }} />
-                      <span>Instant confirmation</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 size={12} style={{ color: "#B8935A" }} />
-                      <span>Best rate guaranteed</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+                <p className="text-white/40 text-xs text-center mt-4 leading-relaxed">
+                  {PAYMENTS_ON
+                    ? q
+                      ? `You'll get an M-Pesa prompt for ${kes(q.deposit)}. The balance of ${kes(q.balance)} is paid on arrival.`
+                      : "Select your dates to see your total and deposit."
+                    : q
+                      ? "No payment now. We'll confirm availability and tell you how to pay the deposit."
+                      : "Select your dates to see your total."}
+                </p>
+                <p className="text-white/25 text-[11px] text-center mt-2">We only use your details to manage this booking.</p>
+              </>
+            )}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function Line({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-white/75">{label}</span>
+      <span style={{ color: "#D4B483" }}>{value}</span>
+    </div>
+  );
+}
+
+function Row({ label, value, strong, last }: { label: string; value: string; strong?: boolean; last?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-4 py-2 ${last ? "" : "border-b border-white/10"}`}>
+      <span className="text-white/50 text-sm">{label}</span>
+      <span className={strong ? "font-serif text-xl tracking-wider" : "text-white text-sm"} style={strong ? { color: "#D4B483" } : undefined}>{value}</span>
+    </div>
   );
 }

@@ -1,9 +1,11 @@
-// Single source of truth for all pricing configuration
+// Nightly rates come from lib/property.ts so the price shown and the price charged can never differ.
+import { property } from "./property";
+
 export const PRICING_CONFIG = {
-  weekdayRate: 3500,
-  weekendRate: 4000,
+  weekdayRate: property.nightlyRate.weekday,
+  weekendRate: property.nightlyRate.weekend,
   depositRate: 0.5,      // 50% deposit to lock dates
-  commissionRate: 0.015, // 1.5% developer commission
+  commissionRate: 0.015, // your cut, logged on every booking
   maxNights: 30,
   maxGuests: 2,
 } as const;

@@ -29,29 +29,32 @@ export default function Gallery({ host }: GalleryProps) {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-          {images.map((img, i) => (
-            <div
-              key={i}
-              className={`relative overflow-hidden rounded-sm cursor-pointer group ${
-                i === 0 ? "col-span-2 row-span-2" : ""
-              }`}
-              style={{ aspectRatio: i === 0 ? "1/1" : "4/3" }}
-              onClick={() => setIndex(i)}
-            >
-              <Image
-                src={img.src}
-                alt={img.alt}
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                sizes="(max-width: 768px) 50vw, 25vw"
-              />
-              <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/40 transition-all duration-300 flex items-end p-3">
-                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40 px-2 py-1 rounded-sm">
-                  {img.label}
+          {images.map((img, i) => {
+            const isFirst = i === 0;
+            // an odd image left over at the end stretches across, so the grid never has a hole
+            const isOrphan = i === images.length - 1 && !isFirst && (images.length - 1) % 2 === 1;
+            return (
+              <button
+                type="button"
+                key={i}
+                className={`relative overflow-hidden rounded-sm cursor-zoom-in group text-left ${isFirst ? "col-span-2 row-span-2" : ""} ${isOrphan ? "col-span-2" : ""}`}
+                style={{ aspectRatio: isFirst ? "1/1" : isOrphan ? "16/9" : "4/3" }}
+                onClick={() => setIndex(i)}
+                aria-label={`View photo: ${img.label}`}
+              >
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  sizes={isFirst || isOrphan ? "(max-width: 768px) 100vw, 50vw" : "(max-width: 768px) 50vw, 25vw"}
+                />
+                <span className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/60 to-transparent">
+                  <span className="text-white text-xs font-medium">{img.label}</span>
                 </span>
-              </div>
-            </div>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 

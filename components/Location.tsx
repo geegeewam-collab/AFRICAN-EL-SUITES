@@ -1,6 +1,4 @@
-"use client";
-
-import { MapPin, Plane, Building2, ShoppingBag, Coffee } from "lucide-react";
+import { MapPin, Plane, Building2, ShoppingBag, Coffee, Navigation } from "lucide-react";
 import { HostProfile } from "@/lib/types";
 
 interface LocationProps {
@@ -15,6 +13,9 @@ const distances = [
 ];
 
 export default function Location({ host }: LocationProps) {
+  const place = `${host.address.line1}, ${host.address.area}, Kenya`;
+  const embed = host.mapEmbedUrl || `https://www.google.com/maps?q=${encodeURIComponent(place)}&z=16&output=embed`;
+  const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
   return (
     <section id="location" className="section-pad" style={{ backgroundColor: "#0B1526" }}>
       <div className="max-w-6xl mx-auto">
@@ -27,15 +28,24 @@ export default function Location({ host }: LocationProps) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-10 items-start">
-          <div className="rounded-sm overflow-hidden border relative" style={{ borderColor: "rgba(184,147,90,0.18)", height: "380px" }}>
+          <div className="rounded-sm overflow-hidden border relative" style={{ borderColor: "rgba(184,147,90,0.18)", height: "clamp(300px, 55vw, 380px)" }}>
             <iframe
-              src={host.mapEmbedUrl}
+              src={embed}
               style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               title={`${host.name} Location`}
             />
+            <a
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-2 px-4 py-2.5 text-xs font-medium rounded-sm shadow-lg"
+              style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" }}
+            >
+              <Navigation size={14} /> Open in Google Maps
+            </a>
           </div>
 
           <div className="flex flex-col gap-5">

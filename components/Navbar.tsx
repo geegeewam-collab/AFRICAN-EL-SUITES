@@ -8,7 +8,7 @@ interface NavbarProps {
   host: HostProfile;
 }
 
-const navLinks = [
+const allLinks = [
   { label: "The Suite", href: "#gallery" },
   { label: "Rates", href: "#pricing" },
   { label: "Amenities", href: "#amenities" },
@@ -17,6 +17,7 @@ const navLinks = [
 ];
 
 export default function Navbar({ host }: NavbarProps) {
+  const navLinks = allLinks.filter((l) => l.href !== "#reviews" || (host.reviews?.length ?? 0) > 0);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -78,7 +79,7 @@ export default function Navbar({ host }: NavbarProps) {
       </div>
 
       {menuOpen && (
-        <div className="md:hidden border-t border-white/10 mt-4 animate-in slide-in-from-top duration-300" style={{ backgroundColor: "rgba(11,21,38,0.99)", backdropFilter: "blur(20px)" }}>
+        <div className="md:hidden border-t border-white/10 mt-4" style={{ backgroundColor: "rgba(11,21,38,0.99)", backdropFilter: "blur(20px)" }}>
           <div className="flex flex-col px-5 py-5 gap-4">
             {navLinks.map((link) => (
               <a
