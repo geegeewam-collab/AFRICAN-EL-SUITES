@@ -486,7 +486,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                   {linkCopied ? "Copied" : "Copy"}
                 </button>
               </div>
-            )}
+            </div>
           )}
         </section>
       </div>

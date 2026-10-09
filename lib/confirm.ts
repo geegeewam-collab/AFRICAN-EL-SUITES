@@ -1,4 +1,5 @@
 import { adminDb } from "./firebaseAdmin";
+import { DocumentData } from "firebase-admin/firestore";
 import { sendSms, smsConfigured } from "./sms";
 import { emailConfigured, sendBookingAlert } from "./notify";
 import { BookingInfo, guestSms, ownerSms } from "./messages";
