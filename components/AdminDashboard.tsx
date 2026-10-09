@@ -115,7 +115,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
     }
   };
 
-  // Monthly statement = paid bookings whose stay STARTS in the chosen month.
   const [y, m] = month.split("-").map(Number);
   const monthLabel = `${MONTHS[m - 1]} ${y}`;
   const shift = (n: number) => setMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
@@ -166,7 +165,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </form>
         </div>
 
-        {/* Today's Focus */}
         <section className={`${card} mb-8`} style={cardStyle}>
           <h2 className="font-serif text-lg mb-3">Today's Focus</h2>
           <div className="grid sm:grid-cols-2 gap-3">
@@ -181,7 +179,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
         </section>
 
-        {/* Bookings */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-serif text-lg">Bookings</h2>
@@ -262,7 +259,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           )}
         </section>
 
-        {/* Monthly summary */}
         <section className={`${card} mb-8`} style={cardStyle}>
           <div className="flex items-center justify-between mb-4">
             <button className={btn} onClick={() => shift(-1)}>‹</button>
@@ -285,7 +281,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           <p className="text-white/30 text-[11px] mt-3">Counts paid bookings whose stay starts in {monthLabel}.</p>
         </section>
 
-        {/* Pricing config display */}
         <section className={`${card} mb-8`} style={cardStyle}>
           <h2 className="font-serif text-lg mb-4">Pricing Configuration</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -300,7 +295,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
         </section>
 
-        {/* Change Password */}
         <section className={`${card} mb-8`} style={cardStyle}>
           {showPasswordForm ? (
             <form onSubmit={changePassword}>
@@ -372,7 +366,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           )}
         </section>
 
-        {/* Add a booking by hand */}
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Add a booking</h2>
           <p className="text-white/40 text-xs mb-3">For guests who booked by WhatsApp, phone or cash. It blocks the dates and counts in the monthly statement.</p>
@@ -412,7 +405,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
         </section>
 
-        {/* Blocked dates */}
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Blocked dates</h2>
           <p className="text-white/40 text-xs mb-3">Block nights taken elsewhere (Airbnb, family, repairs) so the site never double-books them.</p>
@@ -461,7 +453,6 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           )}
         </section>
 
-        {/* Setup status */}
         <section className={`${card} mb-8`} style={cardStyle}>
           <h2 className="font-serif text-lg mb-3">Setup status</h2>
           <ul className="space-y-2 text-sm">
@@ -506,7 +497,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
 function Check({ ok, warn, label, hint }: { ok: boolean; warn?: boolean; label: string; hint: string }) {
   return (
     <li className="flex items-start gap-3">
-      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/0 text-amber-300" : "bg-white/10 text-white/40"}`}>
+      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/40"}`}>
         {ok ? "✓" : warn ? "!" : "–"}
       </span>
       <span>
