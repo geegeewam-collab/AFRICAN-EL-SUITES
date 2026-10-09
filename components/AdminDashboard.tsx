@@ -150,6 +150,9 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
   const card = "rounded-sm p-4";
   const cardStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" };
   const btn = "px-3 py-1.5 text-xs rounded-sm border border-white/15 text-white/80 disabled:opacity-40";
+  // Main action of a form: gold fill, same look as the login button.
+  const btnPrimary = "px-5 py-2.5 text-sm font-medium rounded-sm disabled:opacity-40";
+  const primaryStyle = { background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526" };
 
   return (
     <main className="min-h-screen px-4 py-8 text-white" style={{ backgroundColor: "#0B1526" }}>
@@ -169,11 +172,11 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           <h2 className="font-serif text-lg mb-3">Today's Focus</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="p-3 rounded-sm bg-white/5 border border-white/10">
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">Paid Today</p>
+              <p className="text-white/60 text-[10px] uppercase tracking-widest">Paid Today</p>
               <p className="text-xl font-serif">{kes(paid.reduce((n, b) => n + b.totalAmount, 0))}</p>
             </div>
             <div className="p-3 rounded-sm bg-white/5 border border-white/10">
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">Booking Status</p>
+              <p className="text-white/60 text-[10px] uppercase tracking-widest">Booking Status</p>
               <p className="text-sm">{paid.length} confirmed for {monthLabel}</p>
             </div>
           </div>
@@ -192,7 +195,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             </div>
           </div>
           {list.length === 0 ? (
-            <p className="text-white/30 text-sm">Nothing here yet.</p>
+            <p className="text-white/50 text-sm">Nothing here yet.</p>
           ) : (
             <ul className="space-y-3">
               {list.map((b) => (
@@ -200,7 +203,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <p className="font-medium">
-                        {b.guestName} <span className="text-white/35 text-xs font-normal ml-1">{bookingRef(b.id)}{b.source === "manual" ? " · manual" : ""}</span>
+                        {b.guestName} <span className="text-white/55 text-xs font-normal ml-1">{bookingRef(b.id)}{b.source === "manual" ? " · manual" : ""}</span>
                       </p>
                       <p className="text-white/50 text-xs">
                         {nice(b.checkIn)} to {nice(b.checkOut)} | {b.nights} night{b.nights > 1 ? "s" : ""} | {b.guests} guest{b.guests > 1 ? "s" : ""}
@@ -210,9 +213,9 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                   </div>
                   <p className="text-sm text-white/70">
                     Total {kes(b.totalAmount)} | Deposit {kes(b.depositAmount)} | Balance {kes(b.balanceAmount)}
-                    {b.mpesaReceipt && <span className="text-white/40"> | {b.mpesaReceipt}</span>}
+                    {b.mpesaReceipt && <span className="text-white/60"> | {b.mpesaReceipt}</span>}
                     {b.weekdayNights !== undefined && (
-                      <span className="block text-white/40 text-xs mt-0.5">
+                      <span className="block text-white/60 text-xs mt-0.5">
                         {b.weekdayNights} weekday + {b.weekendNights} weekend night{b.nights === 1 ? "" : "s"}
                       </span>
                     )}
@@ -224,7 +227,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                       <Msg label="Owner email" v={b.notify.ownerEmail} />
                     </p>
                   )}
-                  <p className="text-white/30 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
+                  <p className="text-white/50 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {b.guestPhone && <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
                     {b.paymentStatus === "paid" && b.guestPhone && (
@@ -273,16 +276,17 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
             <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">Service Fee ({pct(commissionRate)})</p>
+              <p className="text-white/60 text-[10px] uppercase tracking-widest">Service Fee ({pct(commissionRate)})</p>
               <p className="text-xl font-serif" style={{ color: "#D4B483" }}>{kes(commission)}</p>
             </div>
             <button className={btn} onClick={copy}>{copied ? "Copied" : "Copy statement"}</button>
           </div>
-          <p className="text-white/30 text-[11px] mt-3">Counts paid bookings whose stay starts in {monthLabel}.</p>
+          <p className="text-white/50 text-[11px] mt-3">Counts paid bookings whose stay starts in {monthLabel}.</p>
         </section>
 
         <section className={`${card} mb-8`} style={cardStyle}>
-          <h2 className="font-serif text-lg mb-4">Pricing Configuration</h2>
+          <h2 className="font-serif text-lg mb-1">Current rates</h2>
+          <p className="text-white/50 text-xs mb-4">These are set in the site&apos;s code. To change them, ask whoever manages your website.</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="text-white/50">Weekday rate</div>
             <div style={{ color: "#D4B483" }}>KES {PRICING_CONFIG.weekdayRate.toLocaleString()}</div>
@@ -290,7 +294,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             <div style={{ color: "#D4B483" }}>KES {PRICING_CONFIG.weekendRate.toLocaleString()}</div>
             <div className="text-white/50">Deposit rate</div>
             <div style={{ color: "#D4B483" }}>{Math.round(PRICING_CONFIG.depositRate * 100)}%</div>
-            <div className="text-white/50">Service Fee</div>
+            <div className="text-white/50">Service fee</div>
             <div style={{ color: "#D4B483" }}>{pct(PRICING_CONFIG.commissionRate)}</div>
           </div>
         </section>
@@ -345,7 +349,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
                 </label>
               </div>
               <div className="flex gap-2">
-                <button type="submit" disabled={busy} className={btn} style={{ background: "linear-gradient(135deg, #B8935A, #D4B483)", color: "#0B1526", border: "none" }}>
+                <button type="submit" disabled={busy} className={btnPrimary} style={primaryStyle}>
                   {busy ? "Updating..." : "Update Password"}
                 </button>
                 <button type="button" onClick={() => { setShowPasswordForm(false); setPasswordMsg(null); }} disabled={busy} className={btn}>
@@ -357,7 +361,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-serif text-lg mb-1">Change Password</h2>
-                <p className="text-white/40 text-xs">Update your admin login password.</p>
+                <p className="text-white/60 text-xs">Update your admin login password.</p>
               </div>
               <button onClick={() => setShowPasswordForm(true)} className={btn}>
                 Change Password
@@ -368,32 +372,33 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
 
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Add a booking</h2>
-          <p className="text-white/40 text-xs mb-3">For guests who booked by WhatsApp, phone or cash. It blocks the dates and counts in the monthly statement.</p>
+          <p className="text-white/60 text-xs mb-3">For guests who booked by WhatsApp, phone or cash. It blocks the dates and counts in the monthly statement.</p>
           <div className={card} style={cardStyle}>
             <div className="grid sm:grid-cols-2 gap-3 mb-3">
               <input placeholder="Guest name" value={manual.guestName} onChange={(e) => setManual({ ...manual, guestName: e.target.value })}
                 className="bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm" />
               <input placeholder="Phone (optional)" inputMode="tel" value={manual.guestPhone} onChange={(e) => setManual({ ...manual, guestPhone: e.target.value })}
                 className="bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm" />
-              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+              <label className="text-white/60 text-[10px] uppercase tracking-widest">
                 Check-in
                 <input type="date" value={manual.checkIn} onChange={(e) => setManual({ ...manual, checkIn: e.target.value })}
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm normal-case tracking-normal" />
               </label>
-              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+              <label className="text-white/60 text-[10px] uppercase tracking-widest">
                 Check-out
                 <input type="date" value={manual.checkOut} onChange={(e) => setManual({ ...manual, checkOut: e.target.value })}
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm normal-case tracking-normal" />
               </label>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-stretch gap-3">
               <select value={manual.guests} onChange={(e) => setManual({ ...manual, guests: e.target.value })}
-                className="bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm">
+                className="bg-white/5 border border-white/10 rounded-sm px-3 py-2.5 text-white text-sm">
                 <option value="1" className="text-black">1 guest</option>
                 <option value="2" className="text-black">2 guests</option>
               </select>
               <button
-                className={btn}
+                className={`${btnPrimary} flex-1 sm:flex-none sm:px-8`}
+                style={primaryStyle}
                 disabled={busy}
                 onClick={async () => {
                   if (await act({ action: "addBooking", ...manual })) setManual({ guestName: "", guestPhone: "", checkIn: "", checkOut: "", guests: "2" });
@@ -407,24 +412,25 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
 
         <section className="mb-8">
           <h2 className="font-serif text-lg mb-1">Blocked dates</h2>
-          <p className="text-white/40 text-xs mb-3">Block nights taken elsewhere (Airbnb, family, repairs) so the site never double-books them.</p>
+          <p className="text-white/60 text-xs mb-3">Block nights taken elsewhere (Airbnb, family, repairs) so the site never double-books them.</p>
           <div className={`${card} mb-3`} style={cardStyle}>
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+              <label className="text-white/60 text-[10px] uppercase tracking-widest">
                 First night
                 <input type="date" value={block.checkIn} onChange={(e) => setBlock({ ...block, checkIn: e.target.value })}
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm normal-case tracking-normal" />
               </label>
-              <label className="text-white/40 text-[10px] uppercase tracking-widest">
+              <label className="text-white/60 text-[10px] uppercase tracking-widest">
                 Check-out day
                 <input type="date" value={block.checkOut} onChange={(e) => setBlock({ ...block, checkOut: e.target.value })}
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm normal-case tracking-normal" />
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm normal-case tracking-normal" />
               </label>
             </div>
             <input placeholder="Note (e.g. Airbnb guest)" value={block.note} onChange={(e) => setBlock({ ...block, note: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-sm p-2 text-white text-sm mb-3" />
+              className="w-full bg-white/5 border border-white/10 rounded-sm p-2.5 text-white text-sm mb-3" />
             <button
-              className={btn}
+              className={`${btnPrimary} w-full sm:w-auto`}
+              style={primaryStyle}
               disabled={busy}
               onClick={async () => {
                 await act({ action: "addBlock", ...block });
@@ -435,14 +441,14 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             </button>
           </div>
           {blocks.length === 0 ? (
-            <p className="text-white/30 text-xs">No blocked dates.</p>
+            <p className="text-white/50 text-xs">No blocked dates.</p>
           ) : (
             <ul className="space-y-2">
               {blocks.map((b) => (
                 <li key={b.id} className={`${card} flex items-center justify-between gap-3`} style={cardStyle}>
                   <span className="text-sm">
                     {nice(b.checkIn)} to {nice(b.checkOut)}
-                    {b.note && <span className="text-white/40"> | {b.note}</span>}
+                    {b.note && <span className="text-white/60"> | {b.note}</span>}
                   </span>
                   <button className={btn} disabled={busy} onClick={() => confirm("Unblock these dates?") && act({ action: "removeBlock", id: b.id })}>
                     Remove
@@ -497,12 +503,12 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
 function Check({ ok, warn, label, hint }: { ok: boolean; warn?: boolean; label: string; hint: string }) {
   return (
     <li className="flex items-start gap-3">
-      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/40"}`}>
+      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/60"}`}>
         {ok ? "✓" : warn ? "!" : "–"}
       </span>
       <span>
         <span className="block text-white/90">{label}</span>
-        <span className={`block text-xs ${warn ? "text-amber-300/80" : "text-white/40"}`}>{hint}</span>
+        <span className={`block text-xs ${warn ? "text-amber-300/80" : "text-white/60"}`}>{hint}</span>
       </span>
     </li>
   );
@@ -510,14 +516,14 @@ function Check({ ok, warn, label, hint }: { ok: boolean; warn?: boolean; label: 
 
 function Msg({ label, v }: { label: string; v?: string }) {
   if (!v) return null;
-  const color = v === "sent" ? "text-emerald-300/80" : v === "failed" ? "text-red-300" : "text-white/30";
+  const color = v === "sent" ? "text-emerald-300/80" : v === "failed" ? "text-red-300" : "text-white/50";
   return <span className={color}>{label}: {v}</span>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-white/40 text-[10px] uppercase tracking-widest">{label}</p>
+      <p className="text-white/60 text-[10px] uppercase tracking-widest">{label}</p>
       <p className="text-lg font-serif">{value}</p>
     </div>
   );

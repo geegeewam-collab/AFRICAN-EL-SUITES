@@ -2,7 +2,7 @@
 
 Everything below can be done from a phone. Do the steps in order. Each one is independent,
 so the site keeps working even if you stop halfway: anything not set up simply stays switched off
-(the "Setup status" box at the top of `/admin` shows what is on and what is not).
+(the "Setup status" box at the bottom of `/admin` shows what is on and what is not).
 
 ---
 
