@@ -23,6 +23,18 @@ The owner dashboard lives at **your-site.com/admin**.
    variables on a new deployment.)
 4. Open `/admin`, type the password, and you're in. You stay signed in for 7 days.
 
+### Login says something other than "Wrong password"?
+The login page now tells you which setting is missing:
+
+| Message on the login page | What it means | Fix |
+|---|---|---|
+| Wrong password. Try again. | Password is wrong (or a password saved from the dashboard is overriding `ADMIN_PASSWORD`) | Retype it; see "Forgot it?" below |
+| No password is set on this deployment | `ADMIN_PASSWORD` is empty or not in this environment | Add it in Vercel, **redeploy** |
+| Can't reach the database to check the password | `FIREBASE_SERVICE_ACCOUNT` is set but broken, or Firestore was never created | Do step 2 below; exact error is in Vercel > Logs (search `[admin]`) |
+| Password accepted, but ADMIN_SESSION_SECRET is missing | The 2nd variable is missing | Add it in Vercel, **redeploy** |
+
+Never put the password in the source code: anyone who can see the repository would know it.
+
 ### Change it later (from the dashboard)
 Dashboard > **Change Password** > type the current one, then the new one twice (12+ characters).
 From then on the dashboard uses the new password and the `ADMIN_PASSWORD` variable is ignored.
