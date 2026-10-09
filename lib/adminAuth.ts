@@ -59,8 +59,7 @@ async function readStoredHash(): Promise<string | null | "error"> {
 }
 
 function envPasswordOk(input: string) {
-  // Hardcoded fallback for initial setup: "Admin12345678"
-  const real = process.env.ADMIN_PASSWORD || "Admin12345678";
+  const real = process.env.ADMIN_PASSWORD || "";
   if (!real) return false;
   // Hash both sides so the comparison is constant-time and length-independent.
   const a = createHmac("sha256", "pw").update(input).digest();

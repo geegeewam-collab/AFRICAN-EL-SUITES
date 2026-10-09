@@ -131,7 +131,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
     `Booked through the site: ${kes(booked)}`,
     `Service Fee (${pct(commissionRate)}): ${kes(commission)}`,
     "",
-    ...paid.map((b) => `- ${nice(b.checkIn)} to {nice(b.checkOut)} | ${b.guestName} | ${kes(b.totalAmount)} | ${kes(b.commissionAmount)}`),
+    ...paid.map((b) => `- ${nice(b.checkIn)} to ${nice(b.checkOut)} | ${b.guestName} | ${kes(b.totalAmount)} | ${kes(b.commissionAmount)}`),
   ].join("\\n");
 
   const copy = async () => {
