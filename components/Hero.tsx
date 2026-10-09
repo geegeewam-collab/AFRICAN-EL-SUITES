@@ -18,7 +18,7 @@ export default function Hero({ host }: { host: HostProfile }) {
 
       <div className="relative z-10 w-full max-w-6xl mx-auto px-5 pt-32 pb-24 md:py-32">
         <span className="eyebrow block max-w-xl leading-relaxed">
-          {host.address.area} · {host.address.line1}
+          {host.address.area} · Nairobi
         </span>
         <h1 className="mt-4 font-serif text-[2.6rem] leading-[1.08] sm:text-5xl md:text-7xl text-white max-w-3xl">{host.heroTitle}</h1>
         <p className="mt-5 text-white/80 text-base md:text-lg max-w-xl leading-relaxed">{host.heroSubtext}</p>

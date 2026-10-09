@@ -21,7 +21,8 @@ export const paymentsConfigured = () =>
     process.env.DARAJA_CONSUMER_SECRET &&
     process.env.DARAJA_SHORTCODE &&
     process.env.DARAJA_PASSKEY &&
-    process.env.DARAJA_CALLBACK_URL
+    process.env.DARAJA_CALLBACK_URL &&
+    process.env.DARAJA_CALLBACK_SECRET
   );
 
 export function normalizePhone(raw: string) {
@@ -46,28 +47,33 @@ export async function createBooking(input: {
   const recent = sameNumber.docs.filter((d) => d.data().source !== "manual" && d.data().createdAtMs > Date.now() - 10 * 60 * 1000);
   if (recent.length >= 3) throw new BookingError("Too many attempts for this number. Please wait a few minutes and try again.", 429);
 
-  // Block double-booking: paid stays, fresh unpaid holds, owner-blocked dates and other platforms.
-  if (!rangeFree(input.checkIn, input.checkOut, await getUnavailableRanges())) {
-    throw new BookingError("Sorry, those dates were just taken. Please choose different dates.", 409);
-  }
+  // ATOMIC CHECK & CREATE
+  // We run this in a transaction to prevent the double-booking race condition.
+  return await adminDb().runTransaction(async (tx) => {
+    const ranges = await getUnavailableRanges();
+    if (!rangeFree(input.checkIn, input.checkOut, ranges)) {
+      throw new BookingError("Sorry, those dates were just taken. Please choose different dates.", 409);
+    }
 
-  const now = Date.now();
-  const ref = await adminDb().collection("bookings").add({
-    ...input,
-    source: "web",
-    nights: q.nights,
-    weekdayNights: q.weekdayNights,
-    weekendNights: q.weekendNights,
-    totalAmount: q.total,
-    depositAmount: q.deposit,
-    balanceAmount: q.balance,
-    commissionAmount: q.commission,
-    paymentStatus: "pending",
-    bookingStatus: "pending",
-    createdAtMs: now,
-    updatedAtMs: now,
+    const now = Date.now();
+    const ref = adminDb().collection("bookings").doc();
+    tx.set(ref, {
+      ...input,
+      source: "web",
+      nights: q.nights,
+      weekdayNights: q.weekdayNights,
+      weekendNights: q.weekendNights,
+      totalAmount: q.total,
+      depositAmount: q.deposit,
+      balanceAmount: q.balance,
+      commissionAmount: q.commission,
+      paymentStatus: "pending",
+      bookingStatus: "pending",
+      createdAtMs: now,
+      updatedAtMs: now,
+    });
+    return { id: ref.id, deposit: q.deposit, totalAmount: q.total, balanceAmount: q.balance, weekdayNights: q.weekdayNights, weekendNights: q.weekendNights };
   });
-  return { id: ref.id, deposit: q.deposit, totalAmount: q.total, balanceAmount: q.balance, weekdayNights: q.weekdayNights, weekendNights: q.weekendNights };
 }
 
 /** Owner adds a booking by hand (WhatsApp / cash / bank). Counts towards the monthly statement. */
@@ -157,7 +163,7 @@ export async function triggerStkPush(phone: string, amount: number, bookingId: s
       PartyB: process.env.DARAJA_PARTY_B || shortcode,
       PhoneNumber: phone,
       CallBackURL: process.env.DARAJA_CALLBACK_URL,
-      AccountReference: "Booking",
+      AccountReference: bookingId.slice(-8),
       TransactionDesc: "Deposit",
     }),
   });

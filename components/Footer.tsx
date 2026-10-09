@@ -59,7 +59,7 @@ export default function Footer({ host }: FooterProps) {
             <li className="flex items-start gap-3">
               <MapPin size={15} style={{ color: "#D4B483", flexShrink: 0, marginTop: 2 }} />
               <span className="text-white/50 text-sm leading-relaxed">
-                {host.address.line1}<br />{host.address.line2}<br />{host.address.area}
+                {host.address.area}<br />Nairobi, Kenya
               </span>
             </li>
             <li className="flex items-center gap-3">

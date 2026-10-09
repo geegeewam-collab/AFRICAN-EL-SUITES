@@ -1,4 +1,3 @@
-import type { DocumentData } from "firebase-admin/firestore";
 import { adminDb } from "./firebaseAdmin";
 import { sendSms, smsConfigured } from "./sms";
 import { emailConfigured, sendBookingAlert } from "./notify";
@@ -6,9 +5,11 @@ import { BookingInfo, guestSms, ownerSms } from "./messages";
 import { generateBookingConfirmationWhatsApp, generateOwnerNotificationWhatsApp } from "./whatsapp";
 import { property } from "./property";
 import { bookingRef } from "./ref";
+import { getUnavailableRanges } from "./availability";
+import { rangeFree } from "./dates";
 
 type Notify = "sent" | "failed" | "skipped";
-type Mark = { status: "missing" } | { status: "already" } | { status: "marked"; data: DocumentData };
+type Mark = { status: "missing" } | { status: "already" } | { status: "conflict" } | { status: "marked"; data: DocumentData };
 
 const ownerPhone = () => process.env.OWNER_ALERT_PHONE || property.whatsappNumber;
 
@@ -38,6 +39,20 @@ export async function finalizePaid(bookingId: string, receipt: string | null): P
     if (!snap.exists) return { status: "missing" } as Mark;
     const data = snap.data() as DocumentData;
     if (data.paymentStatus === "paid") return { status: "already" } as Mark;
+
+    // Safety: Re-verify availability before confirming payment.
+    // This prevents a guest who paid a late prompt from double-booking dates.
+    const ranges = await getUnavailableRanges();
+    if (!rangeFree(data.checkIn, data.checkOut, ranges)) {
+      tx.update(ref, {
+        paymentStatus: "failed",
+        bookingStatus: "failed",
+        failReason: "Dates were taken while payment was processing",
+        updatedAtMs: Date.now(),
+      });
+      return { status: "conflict" } as Mark;
+    }
+
     tx.update(ref, {
       paymentStatus: "paid",
       bookingStatus: "confirmed",

@@ -129,10 +129,10 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
     `${propertyName} | ${monthLabel}`,
     `${paid.length} paid booking${paid.length === 1 ? "" : "s"}, ${nights} night${nights === 1 ? "" : "s"}`,
     `Booked through the site: ${kes(booked)}`,
-    `Commission (${pct(commissionRate)}): ${kes(commission)}`,
+    `Service Fee (${pct(commissionRate)}): ${kes(commission)}`,
     "",
-    ...paid.map((b) => `- ${nice(b.checkIn)} to ${nice(b.checkOut)} | ${b.guestName} | ${kes(b.totalAmount)} | ${kes(b.commissionAmount)}`),
-  ].join("\n");
+    ...paid.map((b) => `- ${nice(b.checkIn)} to {nice(b.checkOut)} | ${b.guestName} | ${kes(b.totalAmount)} | ${kes(b.commissionAmount)}`),
+  ].join("\\n");
 
   const copy = async () => {
     try {
@@ -166,41 +166,99 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </form>
         </div>
 
-        {/* Setup status */}
+        {/* Today's Focus */}
         <section className={`${card} mb-8`} style={cardStyle}>
-          <h2 className="font-serif text-lg mb-3">Setup status</h2>
-          <ul className="space-y-2 text-sm">
-            <Check ok={health.payments && health.paymentsLive} warn={health.payments !== health.paymentsLive} label="Online M-Pesa payments"
-              hint={!health.payments ? "Not set up: the site sends WhatsApp booking requests instead" : !health.paymentsLive ? "Daraja is ready but the booking form still uses WhatsApp. Set NEXT_PUBLIC_PAYMENTS_ENABLED=true and redeploy" : "Live"} />
-            <Check ok={health.sms && !health.smsSandbox} warn={health.sms && health.smsSandbox} label="Automatic SMS to guest and owner"
-              hint={!health.sms ? "Not set up (Africa's Talking keys missing)" : health.smsSandbox ? "Sandbox mode: messages are NOT delivered. Switch AT_USERNAME to your real username" : "Live"} />
-            <Check ok={health.email} label="Email alert to owner" hint={health.email ? "Live" : "Not set up (Gmail app password missing)"} />
-            <Check ok={health.icalExport} label="Send our bookings to Airbnb / Booking.com" hint={health.icalExport ? "Calendar link ready (below)" : "Not set up (ICAL_EXPORT_TOKEN missing)"} />
-            <Check ok={health.icalImports > 0} label="Read Airbnb / Booking.com bookings" hint={health.icalImports > 0 ? `${health.icalImports} calendar${health.icalImports > 1 ? "s" : ""} connected` : "Not set up (ICAL_IMPORT_URLS missing)"} />
-          </ul>
-          {icalUrl && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <p className="text-white/50 text-xs mb-2">
-                Paste this link into Airbnb / Booking.com under &quot;Import calendar&quot; so they block nights booked on this site:
-              </p>
-              <div className="flex gap-2">
-                <input readOnly value={icalUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-sm p-2 text-white/70 text-xs" />
-                <button
-                  className={btn}
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(icalUrl);
-                      setLinkCopied(true);
-                      setTimeout(() => setLinkCopied(false), 2000);
-                    } catch {
-                      prompt("Copy this link:", icalUrl);
-                    }
-                  }}
-                >
-                  {linkCopied ? "Copied" : "Copy"}
-                </button>
-              </div>
+          <h2 className="font-serif text-lg mb-3">Today's Focus</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="p-3 rounded-sm bg-white/5 border border-white/10">
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">Paid Today</p>
+              <p className="text-xl font-serif">{kes(paid.reduce((n, b) => n + b.totalAmount, 0))}</p>
             </div>
+            <div className="p-3 rounded-sm bg-white/5 border border-white/10">
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">Booking Status</p>
+              <p className="text-sm">{paid.length} confirmed for {monthLabel}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Bookings */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-serif text-lg">Bookings</h2>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(["all", "paid", "pending", "other"] as Filter[]).map((f) => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 text-xs rounded-sm capitalize ${filter === f ? "bg-[#B8935A] text-[#0B1526]" : "bg-white/5 text-white/70"}`}>
+                  {f === "other" ? "Failed / cancelled" : f}
+                </button>
+              ))}
+            </div>
+          </div>
+          {list.length === 0 ? (
+            <p className="text-white/30 text-sm">Nothing here yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {list.map((b) => (
+                <li key={b.id} className={card} style={cardStyle}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <p className="font-medium">
+                        {b.guestName} <span className="text-white/35 text-xs font-normal ml-1">{bookingRef(b.id)}{b.source === "manual" ? " · manual" : ""}</span>
+                      </p>
+                      <p className="text-white/50 text-xs">
+                        {nice(b.checkIn)} to {nice(b.checkOut)} | {b.nights} night{b.nights > 1 ? "s" : ""} | {b.guests} guest{b.guests > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[11px] rounded-sm whitespace-nowrap ${CHIP[b.paymentStatus] ?? CHIP.cancelled}`}>{STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}</span>
+                  </div>
+                  <p className="text-sm text-white/70">
+                    Total {kes(b.totalAmount)} | Deposit {kes(b.depositAmount)} | Balance {kes(b.balanceAmount)}
+                    {b.mpesaReceipt && <span className="text-white/40"> | {b.mpesaReceipt}</span>}
+                    {b.weekdayNights !== undefined && (
+                      <span className="block text-white/40 text-xs mt-0.5">
+                        {b.weekdayNights} weekday + {b.weekendNights} weekend night{b.nights === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </p>
+                  {b.notify && (
+                    <p className="text-[11px] mt-1.5 flex gap-3 flex-wrap">
+                      <Msg label="Guest SMS" v={b.notify.guestSms} />
+                      <Msg label="Owner SMS" v={b.notify.ownerSms} />
+                      <Msg label="Owner email" v={b.notify.ownerEmail} />
+                    </p>
+                  )}
+                  <p className="text-white/30 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {b.guestPhone && <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+                    {b.paymentStatus === "paid" && b.guestPhone && (
+                      <button className={btn} disabled={busy}
+                        onClick={async () => { if (await act({ action: "resendSms", id: b.id })) alert("SMS sent to the guest."); }}>
+                        Resend SMS
+                      </button>
+                    )}
+                    {b.whatsappConfirmationMessage && (
+                      <a className={btn} href={`https://wa.me/${b.guestPhone}?text=${encodeURIComponent(b.whatsappConfirmationMessage)}`} target="_blank" rel="noopener noreferrer" title="Open WhatsApp with the confirmation message ready to send">WhatsApp confirmation</a>
+                    )}
+                    {b.guestPhone && <a className={btn} href={`tel:+${b.guestPhone}`}>Call</a>}
+                    {(b.paymentStatus === "pending" || b.paymentStatus === "failed") && (
+                      <button className={btn} disabled={busy}
+                        onClick={() => {
+                          const r = prompt("M-Pesa receipt code (optional):");
+                          if (r !== null) act({ action: "markPaid", id: b.id, receipt: r });
+                        }}>
+                        Mark paid
+                      </button>
+                    )}
+                    {(b.paymentStatus === "paid" || b.paymentStatus === "pending") && (
+                      <button className={btn} disabled={busy}
+                        onClick={() => confirm(`Cancel ${b.guestName}'s booking? The dates will open up again.`) && act({ action: "cancel", id: b.id })}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
@@ -219,7 +277,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           </div>
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
             <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">Commission ({pct(commissionRate)})</p>
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">Service Fee ({pct(commissionRate)})</p>
               <p className="text-xl font-serif" style={{ color: "#D4B483" }}>{kes(commission)}</p>
             </div>
             <button className={btn} onClick={copy}>{copied ? "Copied" : "Copy statement"}</button>
@@ -237,7 +295,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
             <div style={{ color: "#D4B483" }}>KES {PRICING_CONFIG.weekendRate.toLocaleString()}</div>
             <div className="text-white/50">Deposit rate</div>
             <div style={{ color: "#D4B483" }}>{Math.round(PRICING_CONFIG.depositRate * 100)}%</div>
-            <div className="text-white/50">Developer commission</div>
+            <div className="text-white/50">Service Fee</div>
             <div style={{ color: "#D4B483" }}>{pct(PRICING_CONFIG.commissionRate)}</div>
           </div>
         </section>
@@ -403,82 +461,41 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
           )}
         </section>
 
-        {/* Bookings */}
-        <section>
-          <h2 className="font-serif text-lg mb-3">Bookings</h2>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {(["all", "paid", "pending", "other"] as Filter[]).map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs rounded-sm capitalize ${filter === f ? "bg-[#B8935A] text-[#0B1526]" : "bg-white/5 text-white/70"}`}>
-                {f === "other" ? "Failed / cancelled" : f}
-              </button>
-            ))}
-          </div>
-          {list.length === 0 ? (
-            <p className="text-white/30 text-sm">Nothing here yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {list.map((b) => (
-                <li key={b.id} className={card} style={cardStyle}>
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <p className="font-medium">
-                        {b.guestName} <span className="text-white/35 text-xs font-normal ml-1">{bookingRef(b.id)}{b.source === "manual" ? " · manual" : ""}</span>
-                      </p>
-                      <p className="text-white/50 text-xs">
-                        {nice(b.checkIn)} to {nice(b.checkOut)} | {b.nights} night{b.nights > 1 ? "s" : ""} | {b.guests} guest{b.guests > 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-0.5 text-[11px] rounded-sm whitespace-nowrap ${CHIP[b.paymentStatus] ?? CHIP.cancelled}`}>{STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}</span>
-                  </div>
-                  <p className="text-sm text-white/70">
-                    Total {kes(b.totalAmount)} | Deposit {kes(b.depositAmount)} | Balance {kes(b.balanceAmount)}
-                    {b.mpesaReceipt && <span className="text-white/40"> | {b.mpesaReceipt}</span>}
-                    {b.weekdayNights !== undefined && (
-                      <span className="block text-white/40 text-xs mt-0.5">
-                        {b.weekdayNights} weekday + {b.weekendNights} weekend night{b.nights === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </p>
-                  {b.notify && (
-                    <p className="text-[11px] mt-1.5 flex gap-3 flex-wrap">
-                      <Msg label="Guest SMS" v={b.notify.guestSms} />
-                      <Msg label="Owner SMS" v={b.notify.ownerSms} />
-                      <Msg label="Owner email" v={b.notify.ownerEmail} />
-                    </p>
-                  )}
-                  <p className="text-white/30 text-[11px] mt-1">Created {when(b.createdAtMs)} | Updated {when(b.updatedAtMs)}</p>
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    {b.guestPhone && <a className={btn} href={`https://wa.me/${b.guestPhone}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
-                    {b.paymentStatus === "paid" && b.guestPhone && (
-                      <button className={btn} disabled={busy}
-                        onClick={async () => { if (await act({ action: "resendSms", id: b.id })) alert("SMS sent to the guest."); }}>
-                        Resend SMS
-                      </button>
-                    )}
-                    {b.whatsappConfirmationMessage && (
-                      <a className={btn} href={`https://wa.me/${b.guestPhone}?text=${encodeURIComponent(b.whatsappConfirmationMessage)}`} target="_blank" rel="noopener noreferrer" title="Open WhatsApp with the confirmation message ready to send">WhatsApp confirmation</a>
-                    )}
-                    {b.guestPhone && <a className={btn} href={`tel:+${b.guestPhone}`}>Call</a>}
-                    {(b.paymentStatus === "pending" || b.paymentStatus === "failed") && (
-                      <button className={btn} disabled={busy}
-                        onClick={() => {
-                          const r = prompt("M-Pesa receipt code (optional):");
-                          if (r !== null) act({ action: "markPaid", id: b.id, receipt: r });
-                        }}>
-                        Mark paid
-                      </button>
-                    )}
-                    {(b.paymentStatus === "paid" || b.paymentStatus === "pending") && (
-                      <button className={btn} disabled={busy}
-                        onClick={() => confirm(`Cancel ${b.guestName}'s booking? The dates will open up again.`) && act({ action: "cancel", id: b.id })}>
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+        {/* Setup status */}
+        <section className={`${card} mb-8`} style={cardStyle}>
+          <h2 className="font-serif text-lg mb-3">Setup status</h2>
+          <ul className="space-y-2 text-sm">
+            <Check ok={health.payments && health.paymentsLive} warn={health.payments !== health.paymentsLive} label="Online M-Pesa payments"
+              hint={!health.payments ? "Not set up: the site sends WhatsApp booking requests instead" : !health.paymentsLive ? "Daraja is ready but the booking form still uses WhatsApp. Set NEXT_PUBLIC_PAYMENTS_ENABLED=true and redeploy" : "Live"} />
+            <Check ok={health.sms && !health.smsSandbox} warn={health.sms && health.smsSandbox} label="Automatic SMS to guest and owner"
+              hint={!health.sms ? "Not set up (Africa's Talking keys missing)" : health.smsSandbox ? "Sandbox mode: messages are NOT delivered. Switch AT_USERNAME to your real username" : "Live"} />
+            <Check ok={health.email} label="Email alert to owner" hint={health.email ? "Live" : "Not set up (Gmail app password missing)"} />
+            <Check ok={health.icalExport} label="Send our bookings to Airbnb / Booking.com" hint={health.icalExport ? "Calendar link ready (below)" : "Not set up (ICAL_EXPORT_TOKEN missing)"} />
+            <Check ok={health.icalImports > 0} label="Read Airbnb / Booking.com bookings" hint={health.icalImports > 0 ? `${health.icalImports} calendar${health.icalImports > 1 ? "s" : ""} connected` : "Not set up (ICAL_IMPORT_URLS missing)"} />
+          </ul>
+          {icalUrl && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-white/50 text-xs mb-2">
+                Paste this link into Airbnb / Booking.com under &quot;Import calendar&quot; so they block nights booked on this site:
+              </p>
+              <div className="flex gap-2">
+                <input readOnly value={icalUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-sm p-2 text-white/70 text-xs" />
+                <button
+                  className={btn}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(icalUrl);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    } catch {
+                      prompt("Copy this link:", icalUrl);
+                    }
+                  }}
+                >
+                  {linkCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            )}
           )}
         </section>
       </div>
@@ -489,7 +506,7 @@ export default function AdminDashboard({ bookings, blocks, propertyName, propert
 function Check({ ok, warn, label, hint }: { ok: boolean; warn?: boolean; label: string; hint: string }) {
   return (
     <li className="flex items-start gap-3">
-      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/40"}`}>
+      <span className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] ${ok ? "bg-emerald-500/20 text-emerald-300" : warn ? "bg-amber-500/0 text-amber-300" : "bg-white/10 text-white/40"}`}>
         {ok ? "✓" : warn ? "!" : "–"}
       </span>
       <span>

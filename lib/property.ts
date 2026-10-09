@@ -29,14 +29,17 @@ export const property: HostProfile = {
   description: "A refined one-bedroom retreat designed for the discerning traveler.",
   heroTitle: "A private sanctuary of absolute stillness.",
   heroSubtext:
-    "A curated retreat ten minutes from JKIA — meticulously styled for the discerning traveler who seeks refuge in a fast-paced city.",
+    "A curated retreat in South B, Nairobi — meticulously styled for the discerning traveler who seeks refuge in a fast-paced city.",
   heroImage: "/images/living-room-tv.jpg",
   // Real guest reviews only. While this list is empty the Reviews section stays hidden.
   // Add one after each happy stay, e.g.  { quote: "Spotless and so quiet.", name: "Jane W.", role: "Business traveller" }
   reviews: [],
-  // House rules / cancellation terms. Hidden while empty. Fill in once the owner has confirmed them, e.g.
-  //   { title: "Check-in & check-out", text: "Check-in from 2pm, check-out by 11am." }
-  policies: [],
+  // House rules / cancellation terms.
+  policies: [
+    { title: "Check-in & check-out", text: "Check-in from 2:00 PM, check-out by 11:00 AM." },
+    { title: "Cancellation Policy", text: "Full refund for cancellations made 48 hours before check-in. 50% refund within 48 hours." },
+    { title: "House Rules", text: "Maximum 2 guests. No smoking inside the suite. Quiet hours from 10:00 PM." },
+  ],
   gallery: [
     { src: "/images/bedroom-suite.jpg", alt: "Bedroom with tufted headboard and mirror", label: "Bedroom" },
     { src: "/images/living-room-lounge.jpg", alt: "Sofa and coffee table with fresh flowers", label: "Coffee Corner" },

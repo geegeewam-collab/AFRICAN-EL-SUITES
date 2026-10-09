@@ -6,8 +6,8 @@ interface LocationProps {
 }
 
 const distances = [
-  { icon: Plane, label: "JKIA Airport", distance: "10 mins", detail: "Via Mombasa Road" },
-  { icon: Building2, label: "Nairobi CBD", distance: "5 mins", detail: "Direct access" },
+  { icon: Plane, label: "JKIA Airport", distance: "15-20 mins", detail: "Via Mombasa Road" },
+  { icon: Building2, label: "Nairobi CBD", distance: "15-25 mins", detail: "Depending on traffic" },
   { icon: ShoppingBag, label: "Mombasa Road", distance: "2 mins", detail: "Main highway" },
   { icon: Coffee, label: "Bellevue Area", distance: "Walking", detail: "Shops & restaurants" },
 ];
@@ -23,7 +23,7 @@ export default function Location({ host }: LocationProps) {
           <span className="eyebrow">Location</span>
           <h2 className="mt-3 text-3xl md:text-4xl font-serif text-white mb-4">Prime location</h2>
           <p className="text-white/45 text-sm max-w-md mx-auto">
-            {host.address.line1}, {host.address.area}
+            {host.address.area}, Nairobi
           </p>
         </div>
 
@@ -52,8 +52,8 @@ export default function Location({ host }: LocationProps) {
             <div className="flex items-start gap-3 p-4 rounded-sm border" style={{ background: "rgba(184,147,90,0.06)", borderColor: "rgba(184,147,90,0.18)" }}>
               <MapPin size={18} style={{ color: "#D4B483", flexShrink: 0, marginTop: 2 }} />
               <div>
-                <p className="text-white font-medium text-sm">{host.address.line1}</p>
-                <p className="text-white/50 text-xs mt-0.5">{host.address.line2} · {host.address.area}</p>
+                <p className="text-white font-medium text-sm">{host.address.area}</p>
+                <p className="text-white/50 text-xs mt-0.5">Nairobi, Kenya</p>
               </div>
             </div>
 
